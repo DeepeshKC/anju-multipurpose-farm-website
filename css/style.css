@@ -357,6 +357,7 @@ button {
     }
 }
 
+
 @media (max-width: 650px) {
 
     .navbar {
@@ -369,6 +370,8 @@ button {
     .menu-toggle {
         display: block;
         margin-left: auto;
+        position: relative;
+        z-index: 1001;
     }
 
     .nav-links {
@@ -379,6 +382,7 @@ button {
         width: 100%;
         order: 4;
         padding: 10px 0;
+        background: #ffffff;
     }
 
     .nav-links.active {
@@ -391,8 +395,38 @@ button {
 
     .nav-links a {
         display: block;
+        width: 100%;
         padding: 11px 0;
     }
+
+    .hero {
+        grid-template-columns: 1fr;
+        padding: 65px 7%;
+    }
+
+    .hero h1 {
+        font-size: 40px;
+    }
+
+    .hero-image {
+        height: 280px;
+    }
+
+    .intro,
+    .services,
+    .contact {
+        padding: 70px 7%;
+    }
+
+    .service-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer {
+        flex-direction: column;
+        text-align: center;
+    }
+}
 
     .hero {
         grid-template-columns: 1fr;
