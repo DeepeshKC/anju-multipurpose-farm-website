@@ -31,4 +31,35 @@ if (menuToggle && navLinks) {
         });
 
     });
+    
 }
+
+// =====================================
+// COMPANY INFORMATION
+// =====================================
+
+if (typeof businessConfig !== "undefined") {
+
+    // Update company logo
+    const companyLogo = document.getElementById("company-logo");
+
+    if (companyLogo) {
+        companyLogo.textContent = businessConfig.companyName.toUpperCase();
+    }
+
+    // Update footer company name
+    const footerCompany = document.getElementById("footer-company");
+
+    if (footerCompany) {
+        footerCompany.textContent = businessConfig.companyName;
+    }
+
+    // Update copyright year
+    const footerYear = document.getElementById("footer-year");
+
+    if (footerYear) {
+        footerYear.textContent = new Date().getFullYear();
+    }
+
+}
+
