@@ -206,7 +206,12 @@ button {
     max-width: 850px;
     margin: 0 auto 20px;
 }
-
+.intro p {
+    color: #ffffff;
+    line-height: 1.8;
+    max-width: 750px;
+    margin: 0 auto;
+}
 .intro > p:last-child {
     color: #d1d9e3;
     max-width: 650px;
