@@ -6,7 +6,7 @@ const businessConfig = {
     tagline: "Building better solutions for your business.",
 
     // Contact information
-    email: "test@example.com",
+    email: "hello@example.com",
     phone: "+977 9800000000",
     address: "Kathmandu, Nepal",
 
