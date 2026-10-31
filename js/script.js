@@ -121,5 +121,15 @@ if (footerYear) {
             servicesGrid.appendChild(serviceCard);
         });
     }
+    // Update about section
+    const aboutTitle = document.getElementById("about-title");
+    const aboutDescription = document.getElementById("about-description");
 
+    if (aboutTitle) {
+        aboutTitle.textContent = businessConfig.aboutTitle;
+    }
+
+    if (aboutDescription) {
+        aboutDescription.textContent = businessConfig.aboutDescription;
+    }
 }
