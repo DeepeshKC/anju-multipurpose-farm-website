@@ -67,7 +67,7 @@ if (typeof businessConfig !== "undefined") {
 
     if (footerYear) {
         footerYear.textContent = new Date().getFullYear();
-    }
+    
     // Update contact email
 const contactEmail = document.getElementById("contact-email");
 
@@ -75,4 +75,5 @@ if (contactEmail) {
     contactEmail.href = "mailto:" + businessConfig.email;
 }
 
+}
 }
