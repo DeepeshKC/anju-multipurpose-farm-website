@@ -34,7 +34,8 @@ if (menuToggle && navLinks) {
     
 }
 
-// =====================================
+
+ // =====================================
 // COMPANY INFORMATION
 // =====================================
 
@@ -45,6 +46,13 @@ if (typeof businessConfig !== "undefined") {
 
     if (companyLogo) {
         companyLogo.textContent = businessConfig.companyName.toUpperCase();
+    }
+
+    // Update homepage tagline
+    const companyTagline = document.getElementById("company-tagline");
+
+    if (companyTagline) {
+        companyTagline.textContent = businessConfig.tagline;
     }
 
     // Update footer company name
@@ -62,4 +70,3 @@ if (typeof businessConfig !== "undefined") {
     }
 
 }
-
