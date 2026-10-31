@@ -1,86 +1,84 @@
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="description" content="Professional business solutions in Nepal.">
+    <meta name="description" content="Professional business solutions and services to help your company grow.">
 
-    <title>Your Business | Professional Solutions</title>
+    <title>Your Business | Professional Business Solutions</title>
 
     <link rel="stylesheet" href="/css/style.css">
 </head>
 
 <body>
 
-    <!-- NAVIGATION -->
+    <!-- HEADER -->
     <header class="header">
+
         <nav class="navbar">
 
             <a href="#home" class="logo">
                 YOUR<span>BUSINESS.</span>
             </a>
 
-            <button class="menu-toggle" id="menu-toggle"
-                aria-label="Open navigation menu"
-                aria-expanded="false">
-                ☰
+            <!-- MOBILE MENU BUTTON -->
+            <button
+                class="menu-toggle"
+                id="menu-toggle"
+                aria-label="Toggle navigation"
+                aria-expanded="false"
+                aria-controls="nav-links">
+                &#9776;
             </button>
 
+            <!-- NAVIGATION LINKS -->
             <ul class="nav-links" id="nav-links">
-                <li><a href="#home" data-en="Home" data-ne="गृहपृष्ठ">Home</a></li>
-                <li><a href="#about" data-en="About" data-ne="हाम्रो बारेमा">About</a></li>
-                <li><a href="#services" data-en="Services" data-ne="सेवाहरू">Services</a></li>
-                <li><a href="#contact" data-en="Contact" data-ne="सम्पर्क">Contact</a></li>
+
+                <li><a href="#home">Home</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#services">Services</a></li>
+                <li><a href="#contact">Contact</a></li>
+
             </ul>
 
-            <button class="language-toggle" id="language-toggle">
-                नेपाली
-            </button>
-
         </nav>
+
     </header>
 
 
+    <!-- HERO SECTION -->
     <main>
 
-        <!-- HERO SECTION -->
         <section class="hero" id="home">
 
             <div class="hero-content">
 
-                <p class="eyebrow"
-                   data-en="WELCOME TO OUR COMPANY"
-                   data-ne="हाम्रो कम्पनीमा स्वागत छ">
-                    WELCOME TO OUR COMPANY
-                </p>
+                <p class="hero-label">WELCOME TO OUR COMPANY</p>
 
-                <h1
-                    data-en="Building better solutions for your business."
-                    data-ne="तपाईंको व्यवसायका लागि उत्कृष्ट समाधान निर्माण गर्दै।">
+                <h1>
                     Building better solutions for your business.
                 </h1>
 
-                <p class="hero-description"
-                   data-en="We help businesses grow through thoughtful strategies, reliable services and a commitment to quality."
-                   data-ne="हामी प्रभावकारी रणनीति, भरपर्दो सेवा र गुणस्तरप्रतिको प्रतिबद्धतामार्फत व्यवसायलाई अगाडि बढ्न सहयोग गर्छौं।">
+                <p>
                     We help businesses grow through thoughtful strategies,
                     reliable services and a commitment to quality.
                 </p>
 
-                <a href="#contact" class="btn"
-                   data-en="Let's Talk"
-                   data-ne="हामीसँग कुरा गर्नुहोस्">
+                <a href="#contact" class="btn">
                     Let's Talk
                 </a>
 
             </div>
 
             <div class="hero-image">
+
                 <img
                     src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=85"
                     alt="Modern professional office environment">
+
             </div>
 
         </section>
@@ -89,24 +87,22 @@
         <!-- INTRODUCTION -->
         <section class="intro" id="about">
 
-            <p class="eyebrow"
-               data-en="WHO WE ARE"
-               data-ne="हाम्रो परिचय">
-                WHO WE ARE
-            </p>
+            <div class="container">
 
-            <h2
-                data-en="Your Business. Your Vision. Our Commitment."
-                data-ne="तपाईंको व्यवसाय। तपाईंको सोच। हाम्रो प्रतिबद्धता।">
-                Your Business. Your Vision. Our Commitment.
-            </h2>
+                <p class="section-label">WHO WE ARE</p>
 
-            <p
-                data-en="We believe in building meaningful relationships and delivering solutions that help businesses move forward."
-                data-ne="हामी अर्थपूर्ण सम्बन्ध निर्माण गर्दै व्यवसायलाई अगाडि बढाउन सहयोग गर्ने समाधान प्रदान गर्न विश्वास गर्छौं।">
-                We believe in building meaningful relationships and
-                delivering solutions that help businesses move forward.
-            </p>
+                <h2>
+                    Your Partner in Business Growth
+                </h2>
+
+                <p>
+                    We believe every business deserves reliable support,
+                    practical solutions and opportunities to grow.
+                    Our focus is on delivering quality services and
+                    building lasting relationships with our clients.
+                </p>
+
+            </div>
 
         </section>
 
@@ -114,56 +110,53 @@
         <!-- SERVICES -->
         <section class="services" id="services">
 
-            <div class="section-heading">
+            <div class="container">
 
-                <p class="eyebrow"
-                   data-en="WHAT WE DO"
-                   data-ne="हामी के गर्छौं">
-                    WHAT WE DO
+                <p class="section-label">WHAT WE DO</p>
+
+                <h2>Our Services</h2>
+
+                <p class="section-description">
+                    We provide solutions designed to support your
+                    business needs and long-term goals.
                 </p>
 
-                <h2
-                    data-en="Solutions That Move You Forward"
-                    data-ne="तपाईंलाई अगाडि बढाउने समाधानहरू">
-                    Solutions That Move You Forward
-                </h2>
+                <div class="services-grid">
 
-                <p
-                    data-en="Explore our services and discover how we can support your goals."
-                    data-ne="हाम्रा सेवाहरूको बारेमा जान्नुहोस् र हामीले तपाईंका लक्ष्यमा कसरी सहयोग गर्न सक्छौं भन्ने बुझ्नुहोस्।">
-                    Explore our services and discover how we can support your goals.
-                </p>
+                    <div class="service-card">
 
-            </div>
+                        <h3>Business Consulting</h3>
 
-            <div class="service-grid">
+                        <p>
+                            Practical guidance and strategic support
+                            to help businesses make informed decisions.
+                        </p>
 
-                <article class="service-card">
-                    <span class="service-number">01</span>
-                    <h3 data-en="Our Services" data-ne="हाम्रा सेवाहरू">Our Services</h3>
-                    <p data-en="Professional solutions designed around your business needs."
-                       data-ne="तपाईंको व्यवसायको आवश्यकताअनुसार तयार गरिएका व्यावसायिक समाधानहरू।">
-                        Professional solutions designed around your business needs.
-                    </p>
-                </article>
+                    </div>
 
-                <article class="service-card">
-                    <span class="service-number">02</span>
-                    <h3 data-en="Our Expertise" data-ne="हाम्रो विशेषज्ञता">Our Expertise</h3>
-                    <p data-en="Knowledge and experience applied to meaningful results."
-                       data-ne="अर्थपूर्ण नतिजाका लागि ज्ञान र अनुभवको प्रयोग।">
-                        Knowledge and experience applied to meaningful results.
-                    </p>
-                </article>
+                    <div class="service-card">
 
-                <article class="service-card">
-                    <span class="service-number">03</span>
-                    <h3 data-en="Our Commitment" data-ne="हाम्रो प्रतिबद्धता">Our Commitment</h3>
-                    <p data-en="Building lasting relationships through quality and trust."
-                       data-ne="गुणस्तर र विश्वासमार्फत दीर्घकालीन सम्बन्ध निर्माण।">
-                        Building lasting relationships through quality and trust.
-                    </p>
-                </article>
+                        <h3>Professional Services</h3>
+
+                        <p>
+                            Reliable professional services tailored
+                            to your organization's requirements.
+                        </p>
+
+                    </div>
+
+                    <div class="service-card">
+
+                        <h3>Digital Solutions</h3>
+
+                        <p>
+                            Modern digital solutions that help
+                            businesses improve and grow.
+                        </p>
+
+                    </div>
+
+                </div>
 
             </div>
 
@@ -173,29 +166,22 @@
         <!-- CONTACT -->
         <section class="contact" id="contact">
 
-            <p class="eyebrow"
-               data-en="LET'S CONNECT"
-               data-ne="सम्पर्क गरौं">
-                LET'S CONNECT
-            </p>
+            <div class="container">
 
-            <h2
-                data-en="Have a project in mind?"
-                data-ne="तपाईंसँग कुनै परियोजनाको सोच छ?">
-                Have a project in mind?
-            </h2>
+                <p class="section-label">GET IN TOUCH</p>
 
-            <p
-                data-en="Let's discuss how we can work together."
-                data-ne="हामी कसरी सँगै काम गर्न सक्छौं, छलफल गरौं।">
-                Let's discuss how we can work together.
-            </p>
+                <h2>Let's Work Together</h2>
 
-            <a href="mailto:hello@example.com" class="btn btn-light"
-               data-en="Contact Us"
-               data-ne="हामीलाई सम्पर्क गर्नुहोस्">
-                Contact Us
-            </a>
+                <p>
+                    Have a question or want to discuss a project?
+                    We would be happy to hear from you.
+                </p>
+
+                <a href="mailto:hello@example.com" class="btn">
+                    Contact Us
+                </a>
+
+            </div>
 
         </section>
 
@@ -205,19 +191,20 @@
     <!-- FOOTER -->
     <footer class="footer">
 
-        <a href="#home" class="logo">
-            YOUR<span>BUSINESS.</span>
-        </a>
+        <div class="container">
 
-        <p>
-            &copy; 2026 Your Business.
-            All rights reserved.
-        </p>
+            <p>
+                &copy; 2026 Your Business. All rights reserved.
+            </p>
+
+        </div>
 
     </footer>
 
 
+    <!-- JAVASCRIPT -->
     <script src="/js/script.js"></script>
 
 </body>
+
 </html>
