@@ -69,11 +69,34 @@ if (footerYear) {
     footerYear.textContent = new Date().getFullYear();
 }
 
-// Update contact email
-const contactEmail = document.getElementById("contact-email");
 
-if (contactEmail) {
-    contactEmail.href = "mailto:" + businessConfig.email;
-}
+    // Update contact email and button
+    const contactEmail = document.getElementById("contact-email");
+    const contactButton = document.getElementById("contact-button");
+
+    if (contactEmail) {
+        contactEmail.href = "mailto:" + businessConfig.email;
+        contactEmail.textContent = businessConfig.email;
+    }
+
+    if (contactButton) {
+        contactButton.href = "mailto:" + businessConfig.email;
+    }
+
+    // Update contact phone
+    const contactPhone = document.getElementById("contact-phone");
+
+    if (contactPhone) {
+        contactPhone.href = "tel:" + businessConfig.phone.replace(/\s+/g, "");
+        contactPhone.textContent = businessConfig.phone;
+    }
+
+    // Update contact address
+    const contactAddress = document.getElementById("contact-address");
+
+    if (contactAddress) {
+        contactAddress.textContent = businessConfig.address;
+    }
+
 
 }
