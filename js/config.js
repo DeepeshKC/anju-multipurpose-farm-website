@@ -1,9 +1,11 @@
 
 const businessConfig = {
 
-    // Company information
-    companyName: "Your Business",
-    tagline: "Building better solutions for your business.",
+ // Company information
+companyName: "Your Business",
+tagline: "Building better solutions for your business.",
+aboutTitle: "Your Partner in Business Growth",
+aboutDescription: "We believe every business deserves reliable support, practical solutions and opportunities to grow. Our focus is on delivering quality services and building lasting relationships with our clients.",
 
     // Contact information
     email: "test@example.com",
