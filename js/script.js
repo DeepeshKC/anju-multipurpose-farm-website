@@ -48,12 +48,29 @@ if (typeof businessConfig !== "undefined") {
         companyLogo.textContent = businessConfig.companyName.toUpperCase();
     }
 
-    // Update homepage tagline
+ 
+    // Update homepage hero section
+    const heroLabel = document.getElementById("hero-label");
     const companyTagline = document.getElementById("company-tagline");
+    const heroDescription = document.getElementById("hero-description");
+    const heroButton = document.getElementById("hero-button");
+
+    if (heroLabel) {
+        heroLabel.textContent = businessConfig.heroLabel;
+    }
 
     if (companyTagline) {
-        companyTagline.textContent = businessConfig.tagline;
+        companyTagline.textContent = businessConfig.heroTitle;
     }
+
+    if (heroDescription) {
+        heroDescription.textContent = businessConfig.heroDescription;
+    }
+
+    if (heroButton) {
+        heroButton.textContent = businessConfig.heroButtonText;
+    }
+
 
     // Update footer company name
     const footerCompany = document.getElementById("footer-company");
