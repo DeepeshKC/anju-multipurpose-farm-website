@@ -99,4 +99,27 @@ if (footerYear) {
     }
 
 
+    // Update services
+    const servicesGrid = document.getElementById("services-grid");
+
+    if (servicesGrid) {
+        servicesGrid.innerHTML = "";
+
+        businessConfig.services.forEach(function (service) {
+            const serviceCard = document.createElement("div");
+            serviceCard.className = "service-card";
+
+            const serviceTitle = document.createElement("h3");
+            serviceTitle.textContent = service.title;
+
+            const serviceDescription = document.createElement("p");
+            serviceDescription.textContent = service.description;
+
+            serviceCard.appendChild(serviceTitle);
+            serviceCard.appendChild(serviceDescription);
+
+            servicesGrid.appendChild(serviceCard);
+        });
+    }
+
 }
