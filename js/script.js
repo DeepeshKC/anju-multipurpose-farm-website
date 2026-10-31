@@ -62,18 +62,18 @@ if (typeof businessConfig !== "undefined") {
         footerCompany.textContent = businessConfig.companyName;
     }
 
-    // Update copyright year
-    const footerYear = document.getElementById("footer-year");
+ // Update copyright year
+const footerYear = document.getElementById("footer-year");
 
-    if (footerYear) {
-        footerYear.textContent = new Date().getFullYear();
-    
-    // Update contact email
+if (footerYear) {
+    footerYear.textContent = new Date().getFullYear();
+}
+
+// Update contact email
 const contactEmail = document.getElementById("contact-email");
 
 if (contactEmail) {
     contactEmail.href = "mailto:" + businessConfig.email;
 }
 
-}
 }
