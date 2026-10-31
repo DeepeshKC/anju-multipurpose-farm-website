@@ -7,6 +7,13 @@ tagline: "Building better solutions for your business.",
 aboutTitle: "Your Partner in Business Growth",
 aboutDescription: "We believe every business deserves reliable support, practical solutions and opportunities to grow. Our focus is on delivering quality services and building lasting relationships with our clients.",
 
+ // Homepage hero section
+heroLabel: "WELCOME TO OUR COMPANY",
+heroTitle: "Building better solutions for your business.",
+heroDescription: "We help businesses grow through thoughtful strategies, reliable services and a commitment to quality.",
+heroButtonText: "Let's Talk",
+
+ 
     // Contact information
     email: "test@example.com",
     phone: "+977 980000011",
