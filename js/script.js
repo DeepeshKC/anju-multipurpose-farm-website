@@ -70,7 +70,13 @@ if (typeof businessConfig !== "undefined") {
     if (heroButton) {
         heroButton.textContent = businessConfig.heroButtonText;
     }
+    // Update homepage hero image
+    const heroImage = document.getElementById("hero-image");
 
+    if (heroImage) {
+        heroImage.src = businessConfig.heroImage;
+        heroImage.alt = businessConfig.heroImageAlt;
+    }
 
     // Update footer company name
     const footerCompany = document.getElementById("footer-company");
