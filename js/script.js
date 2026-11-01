@@ -88,7 +88,17 @@ if (typeof businessConfig !== "undefined") {
         heroImage.src = businessConfig.heroImage;
         heroImage.alt = businessConfig.heroImageAlt;
     }
+// Update contact section content
+const contactTitle = document.getElementById("contact-title");
+const contactDescription = document.getElementById("contact-description");
 
+if (contactTitle) {
+    contactTitle.textContent = businessConfig.contactTitle;
+}
+
+if (contactDescription) {
+    contactDescription.textContent = businessConfig.contactDescription;
+}
     // Update footer company name
     const footerCompany = document.getElementById("footer-company");
 
