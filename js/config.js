@@ -25,7 +25,7 @@ contactDescription: "Have a question or need our services? Get in touch with our
  
   // Social media
 socialMedia: {
-    facebook: "",
+    facebook: "https://www.facebook.com/",
     instagram: "",
     linkedin: "",
     youtube: ""
