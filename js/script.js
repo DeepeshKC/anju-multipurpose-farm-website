@@ -48,6 +48,17 @@ if (typeof businessConfig !== "undefined") {
         companyLogo.textContent = businessConfig.companyName.toUpperCase();
     }
 
+    // Update navigation labels
+    const navHome = document.getElementById("nav-home");
+    const navAbout = document.getElementById("nav-about");
+    const navServices = document.getElementById("nav-services");
+    const navContact = document.getElementById("nav-contact");
+
+    if (navHome) navHome.textContent = businessConfig.navigation[0];
+    if (navAbout) navAbout.textContent = businessConfig.navigation[1];
+    if (navServices) navServices.textContent = businessConfig.navigation[2];
+    if (navContact) navContact.textContent = businessConfig.navigation[3];
+
  
     // Update homepage hero section
     const heroLabel = document.getElementById("hero-label");
@@ -155,4 +166,5 @@ if (footerYear) {
     if (aboutDescription) {
         aboutDescription.textContent = businessConfig.aboutDescription;
     }
+    
 }
