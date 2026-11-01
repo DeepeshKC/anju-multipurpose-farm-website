@@ -12,7 +12,8 @@ heroLabel: "WELCOME TO OUR COMPANY",
 heroTitle: "Building better solutions for your business.",
 heroDescription: "We help businesses grow through thoughtful strategies, reliable services and a commitment to quality.",
 heroButtonText: "Let's Talk",
-
+heroImage: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1000&q=85",
+heroImageAlt: "Modern professional office environment",
  
     // Contact information
     email: "test@example.com",
