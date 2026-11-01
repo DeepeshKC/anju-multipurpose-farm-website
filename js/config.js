@@ -34,6 +34,8 @@ contactDescription: "Have a question or need our services? Get in touch with our
     ],
 
     // Services
+ servicesTitle: "Our Services",
+servicesDescription: "We provide solutions designed to support your business needs and long-term goals.",
     services: [
         {
             title: "Business Consulting",
