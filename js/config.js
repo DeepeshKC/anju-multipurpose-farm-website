@@ -22,17 +22,7 @@ contactDescription: "Have a question or need our services? Get in touch with our
     phone: "+977 980000011",
     address: "Pokhara, Nepal",
  
-    // Update contact section content
-    const contactTitle = document.getElementById("contact-title");
-    const contactDescription = document.getElementById("contact-description");
-
-    if (contactTitle) {
-        contactTitle.textContent = businessConfig.contactTitle;
-    }
-
-    if (contactDescription) {
-        contactDescription.textContent = businessConfig.contactDescription;
-    }
+  
 
 
     // Navigation
