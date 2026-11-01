@@ -3,6 +3,9 @@ const businessConfig = {
 
  // Company information
 companyName: "Your Business",
+ // SEO settings
+pageTitle: "Your Business | Official Website",
+metaDescription: "Learn about Your Business, our services, and how we help clients achieve their goals.",
  footerText: "All rights reserved.",
 tagline: "Building better solutions for your business.",
 aboutTitle: "Your Partner in Business Growth",
