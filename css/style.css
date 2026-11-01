@@ -307,6 +307,30 @@ button {
 }
 
 
+/* SOCIAL MEDIA LINKS */
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+
+.social-links a {
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.social-links a:hover {
+    color: var(--accent);
+}
+
+
 /* =================================
    8. FOOTER
 ================================= */
