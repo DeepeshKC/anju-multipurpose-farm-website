@@ -13,7 +13,8 @@ ogImage: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=form
 tagline: "Building better solutions for your business.",
 aboutTitle: "Your Partner in Business Growth",
 aboutDescription: "We believe every business deserves reliable support, practical solutions and opportunities to grow. Our focus is on delivering quality services and building lasting relationships with our clients.",
-
+favicon: "images/favicon.png",
+ 
  // Homepage hero section
 heroLabel: "WELCOME TO OUR COMPANY",
 heroTitle: "Building better solutions for your business.",
