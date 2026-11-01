@@ -142,6 +142,18 @@ if (footerYear) {
         contactAddress.textContent = businessConfig.address;
     }
 
+    // Update services section content
+    const servicesTitle = document.getElementById("services-title");
+    const servicesDescription = document.getElementById("services-description");
+
+    if (servicesTitle) {
+        servicesTitle.textContent = businessConfig.servicesTitle;
+    }
+
+    if (servicesDescription) {
+        servicesDescription.textContent = businessConfig.servicesDescription;
+    }
+
 
     // Update services
     const servicesGrid = document.getElementById("services-grid");
