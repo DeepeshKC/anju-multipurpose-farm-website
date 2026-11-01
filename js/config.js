@@ -16,6 +16,8 @@ heroImage: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=fo
 heroImageAlt: "Modern professional office environment",
  
     // Contact information
+ contactTitle: "Let's Start a Conversation",
+contactDescription: "Have a question or need our services? Get in touch with our team.",
     email: "test@example.com",
     phone: "+977 980000011",
     address: "Pokhara, Nepal",
