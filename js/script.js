@@ -68,6 +68,14 @@ if (ogDescription) {
 if (ogImage) {
     ogImage.content = businessConfig.ogImage;
 }
+
+    // Update favicon
+const favicon = document.getElementById("favicon");
+
+if (favicon) {
+    favicon.href = businessConfig.favicon;
+}
+    
     // Update company logo
     const companyLogo = document.getElementById("company-logo");
 
