@@ -23,7 +23,13 @@ contactDescription: "Have a question or need our services? Get in touch with our
     phone: "+977 980000011",
     address: "Pokhara, Nepal",
  
-  
+  // Social media
+socialMedia: {
+    facebook: "",
+    instagram: "",
+    linkedin: "",
+    youtube: ""
+},
 
 
     // Navigation
