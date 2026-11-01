@@ -105,6 +105,14 @@ if (contactDescription) {
     if (footerCompany) {
         footerCompany.textContent = businessConfig.companyName;
     }
+    
+    // Update footer text
+    const footerText = document.getElementById("footer-text");
+
+    if (footerText) {
+        footerText.textContent = businessConfig.footerText;
+    }
+
 
  // Update copyright year
 const footerYear = document.getElementById("footer-year");
