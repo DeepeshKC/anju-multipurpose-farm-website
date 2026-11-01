@@ -22,35 +22,6 @@ contactDescription: "Have a question or need our services? Get in touch with our
     email: "test@example.com",
     phone: "+977 980000011",
     address: "Pokhara, Nepal",
-
- 
-    // Update social media links
-    const socialLinks = document.getElementById("social-links");
-
-    if (socialLinks && businessConfig.socialMedia) {
-        socialLinks.innerHTML = "";
-
-        const platforms = [
-            { name: "Facebook", url: businessConfig.socialMedia.facebook },
-            { name: "Instagram", url: businessConfig.socialMedia.instagram },
-            { name: "LinkedIn", url: businessConfig.socialMedia.linkedin },
-            { name: "YouTube", url: businessConfig.socialMedia.youtube }
-        ];
-
-        platforms.forEach(function (platform) {
-            if (platform.url && platform.url.trim() !== "") {
-                const link = document.createElement("a");
-
-                link.href = platform.url;
-                link.textContent = platform.name;
-                link.target = "_blank";
-                link.rel = "noopener noreferrer";
-
-                socialLinks.appendChild(link);
-            }
-        });
-    }
-
  
   // Social media
 socialMedia: {
