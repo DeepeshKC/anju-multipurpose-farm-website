@@ -41,6 +41,18 @@ if (menuToggle && navLinks) {
 
 if (typeof businessConfig !== "undefined") {
 
+    // Update SEO metadata
+    const pageTitle = document.getElementById("page-title");
+    const metaDescription = document.getElementById("meta-description");
+
+    if (pageTitle) {
+        document.title = businessConfig.pageTitle;
+    }
+
+    if (metaDescription) {
+        metaDescription.content = businessConfig.metaDescription;
+    }
+
     // Update company logo
     const companyLogo = document.getElementById("company-logo");
 
