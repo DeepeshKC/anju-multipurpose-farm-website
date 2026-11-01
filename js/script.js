@@ -52,7 +52,22 @@ if (typeof businessConfig !== "undefined") {
     if (metaDescription) {
         metaDescription.content = businessConfig.metaDescription;
     }
+// Update Open Graph metadata
+const ogTitle = document.getElementById("og-title");
+const ogDescription = document.getElementById("og-description");
+const ogImage = document.getElementById("og-image");
 
+if (ogTitle) {
+    ogTitle.content = businessConfig.ogTitle;
+}
+
+if (ogDescription) {
+    ogDescription.content = businessConfig.ogDescription;
+}
+
+if (ogImage) {
+    ogImage.content = businessConfig.ogImage;
+}
     // Update company logo
     const companyLogo = document.getElementById("company-logo");
 
