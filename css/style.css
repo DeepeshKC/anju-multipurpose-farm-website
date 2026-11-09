@@ -907,3 +907,53 @@ p {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Accessibility and small-screen refinements */
+:focus-visible {
+  outline: 3px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+.contact-details a {
+  overflow-wrap: anywhere;
+}
+
+.contact-details a:hover,
+.footer-bottom a:hover {
+  color: var(--yellow);
+}
+
+.contact-section .contact-button {
+  grid-column: 1 / -1;
+  margin-top: 2px;
+}
+
+@media (max-width: 800px) {
+  .nav-links {
+    max-height: calc(100dvh - 76px);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .site-header {
+    gap: 12px;
+  }
+
+  .brand {
+    min-width: 0;
+  }
+
+  .brand-text {
+    min-width: 0;
+  }
+
+  .brand-text strong,
+  .brand-text small {
+    overflow-wrap: anywhere;
+  }
+
+  .contact-details {
+    min-width: 0;
+  }
+}
