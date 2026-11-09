@@ -1,0 +1,3 @@
+const list=document.getElementById('blog-list');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+(async()=>{try{const r=await fetch('/api/posts');if(!r.ok)throw Error('Blog unavailable');const {posts}=await r.json();list.innerHTML=posts.length?posts.map(p=>`<article class="blog-card"><span class="eyebrow">${esc(p.category)}</span><h2>${esc(p.title)}</h2><p>${esc(p.excerpt)}</p><a class="text-link" href="post.html?slug=${encodeURIComponent(p.slug)}">Read story ↗</a></article>`).join(''):'<p>No stories have been published yet. Please check back soon.</p>';}catch{list.innerHTML='<p>Stories are temporarily unavailable. Please try again later.</p>';}})();
