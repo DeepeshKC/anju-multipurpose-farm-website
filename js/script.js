@@ -4,6 +4,11 @@ const languageToggle = document.getElementById("language-toggle");
 const currentYear = document.getElementById("current-year");
 
 let currentLanguage = "en";
+const pageTitles = {
+  home: {en:"Anju Multipurpose Agriculture Farm | Farm & Homestay in Basdol", ne:"अञ्जु बहुउद्देश्यीय कृषि फार्म | बसडोल, बनेपा"},
+  blog: {en:"Blog | Anju Farm", ne:"ब्लग | अञ्जु फार्म"},
+  post: {en:"Farm Story | Anju Farm", ne:"फार्म कथा | अञ्जु फार्म"}
+};
 
 // Keep the footer year current.
 if (currentYear) {
@@ -35,10 +40,9 @@ function setLanguage(language) {
     );
   }
 
-  document.title =
-    language === "en"
-      ? "Anju Multipurpose Agriculture Farm | Farm & Homestay in Basdol"
-      : "अञ्जु बहुउद्देश्यीय कृषि फार्म | बसडोल, बनेपा";
+  const page = location.pathname.endsWith('/blog.html') ? 'blog' : location.pathname.endsWith('/post.html') ? 'post' : 'home';
+  if (page !== 'post' || !document.querySelector('#post h1')) document.title = pageTitles[page][language];
+  document.dispatchEvent(new CustomEvent('anju-language-change', {detail:{language}}));
 
   try {
     localStorage.setItem("anjuFarmLanguage", language);
