@@ -1,7 +1,14 @@
 import {reply,sameOrigin,safeJson,sessionCookie} from '../../_shared.js';
 export async function onRequestPost({request,env}){
  if(!sameOrigin(request))return reply({error:'Invalid origin'},403);
- if(!env.DB||!env.ADMIN_PASSWORD||!env.ADMIN_SECRET)return reply({error:'Admin not configured'},503);
+if (!env.DB || !env.ADMIN_PASSWORD || !env.ADMIN_SECRET) {
+  console.error('Admin configuration missing', {
+    DB: !!env.DB,
+    ADMIN_PASSWORD: !!env.ADMIN_PASSWORD,
+    ADMIN_SECRET: !!env.ADMIN_SECRET
+  });
+  return reply({ error: 'Admin not configured' }, 503);
+}
  const ip=request.headers.get('CF-Connecting-IP')||'unknown';const now=Math.floor(Date.now()/1000);
  const row=await env.DB.prepare('SELECT attempts,window_start FROM login_attempts WHERE ip=?').bind(ip).first();
  if(row&&row.attempts>=8&&now-row.window_start<900)return reply({error:'Too many attempts. Try again in 15 minutes.'},429);
