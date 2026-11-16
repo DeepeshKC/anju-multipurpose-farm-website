@@ -11,8 +11,6 @@ if (!env.DB || !env.ADMIN_PASSWORD || !env.ADMIN_SECRET) {
     ].filter(Boolean)
   }, 503);
 }
-  return reply({ error: 'Admin not configured' }, 503);
-}
  const ip=request.headers.get('CF-Connecting-IP')||'unknown';const now=Math.floor(Date.now()/1000);
  const row=await env.DB.prepare('SELECT attempts,window_start FROM login_attempts WHERE ip=?').bind(ip).first();
  if(row&&row.attempts>=8&&now-row.window_start<900)return reply({error:'Too many attempts. Try again in 15 minutes.'},429);
