@@ -182,7 +182,7 @@ p {
   inset: 0;
   background:
     linear-gradient(90deg, rgba(13, 35, 22, 0.83) 0%, rgba(13, 35, 22, 0.56) 48%, rgba(13, 35, 22, 0.1) 100%),
-    url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=2200&q=90") center 52% / cover no-repeat;
+    url("../images/farm-hero.webp") center 52% / cover no-repeat;
   transform: scale(1.01);
 }
 
