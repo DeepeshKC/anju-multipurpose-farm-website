@@ -627,6 +627,12 @@ p {
   font-size: 0.77rem;
 }
 
+.footer-copyright {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .footer-bottom a {
   color: var(--green);
   font-weight: 700;
