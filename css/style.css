@@ -993,3 +993,9 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--yellow);outline-off
 .farm-whatsapp-float:hover{transform:translateY(-3px);box-shadow:0 7px 22px rgba(0,0,0,.27)}
 .farm-whatsapp-float:focus-visible{outline:3px solid #f4b942;outline-offset:3px}
 @media(max-width:600px){.farm-whatsapp-float{right:16px;bottom:16px;width:54px;height:54px}}
+
+/* Balanced polish: readability without layout changes */
+.hero-caption { color: #fff; text-shadow: 0 1px 5px rgba(0,0,0,.65); }
+.intro-description p { color: #4a514b; }
+.contact-section > p a { color: #f7f3e9; text-decoration: underline; text-underline-offset: 4px; }
+.contact-section > p a:hover { color: var(--yellow); }
