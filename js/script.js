@@ -33,6 +33,14 @@ function setLanguage(language) {
     }
   });
 
+  // Translate image descriptions and page metadata without altering layout.
+  document.querySelectorAll("img[data-alt-en][data-alt-ne]").forEach((img) => {
+    img.alt = img.getAttribute(`data-alt-${language}`);
+  });
+  document.querySelectorAll("meta[data-content-en][data-content-ne]").forEach((meta) => {
+    meta.setAttribute("content", meta.getAttribute(`data-content-${language}`));
+  });
+
   if (languageToggle) {
     languageToggle.textContent = language === "en" ? "नेपाली" : "English";
     languageToggle.setAttribute(
