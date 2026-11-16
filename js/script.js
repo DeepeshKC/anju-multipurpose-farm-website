@@ -5,7 +5,7 @@ const currentYear = document.getElementById("current-year");
 
 let currentLanguage = "en";
 const pageTitles = {
-  home: {en:"Anju Multipurpose Agriculture Farm | Farm & Homestay in Basdol", ne:"अञ्जु बहुउद्देश्यीय कृषि फार्म | बसडोल, बनेपा"},
+  home: {en:"Anju Multipurpose Agriculture Farm | Farm & Homestay in Basdol", ne:"अञ्जु बहुउद्देश्यीय कृषि फार्म | बाँसडोल, बनेपा"},
   blog: {en:"Blog | Anju Farm", ne:"ब्लग | अञ्जु फार्म"},
   post: {en:"Farm Story | Anju Farm", ne:"फार्म कथा | अञ्जु फार्म"}
 };
@@ -23,6 +23,7 @@ function setLanguage(language) {
 
   currentLanguage = language;
   document.documentElement.lang = language;
+  if (currentYear) currentYear.textContent = language === "ne" ? String(new Date().getFullYear()).replace(/[0-9]/g, d => "०१२३४५६७८९"[Number(d)]) : new Date().getFullYear();
 
   document.querySelectorAll("[data-en][data-ne]").forEach((element) => {
     const translation = element.getAttribute(`data-${language}`);
