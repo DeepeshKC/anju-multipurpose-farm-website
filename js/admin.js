@@ -1,7 +1,11 @@
 const $=id=>document.getElementById(id);let posts=[],editing=null;
 function notice(s,error=false){$('notice').textContent=s;$('notice').className=error?'admin-error':'admin-note';}
 async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data;}
-function show(auth){$('login-section').hidden=auth;$('editor-section').hidden=!auth;}
+function show(auth) {
+  $('login-section').hidden = auth;
+  $('editor-section').hidden = !auth;
+  $('cms-section').hidden = !auth;
+}
 async function refresh(){const data=await api('/api/admin/posts');posts=data.posts;$('posts-list').replaceChildren();for(const p of posts){const li=document.createElement('li'),button=document.createElement('button');button.textContent='Edit';button.onclick=()=>edit(p);li.append(document.createTextNode(p.title+' ('+p.status+') '),button);$('posts-list').append(li);}}
 function edit(p=null){editing=p?.id??null;for(const key of ['title','slug','category','excerpt','content','status'])$(key).value=p?.[key]??(key==='category'?'FARM STORIES':key==='status'?'draft':'');$('editor-heading').textContent=p?'Edit article':'New article';$('delete-post').hidden=!p;notice('');}
 $('new-post').onclick=()=>edit();
