@@ -39,7 +39,7 @@ const allowedMarks = new Set(['bold', 'italic', 'strike', 'code', 'underline']);
 const markTags = { bold: 'strong', italic: 'em', strike: 's', code: 'code', underline: 'u' };
 const allowedNodes = new Set(['doc', 'paragraph', 'text', 'heading', 'bulletList', 'orderedList', 'listItem', 'blockquote', 'hardBreak', 'horizontalRule']);
 
-function renderDocument(doc) {
+export function renderDocument(doc) {
   let nodes = 0;
   let textLength = 0;
   function render(node, depth = 0) {
