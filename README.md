@@ -1,162 +1,111 @@
-# Business Website Template
+# Anju Multipurpose Agriculture Farm Website
 
-A reusable, responsive business website template built with **HTML, CSS, and JavaScript**.
+Official website for **Anju Multipurpose Agriculture Farm**, a family-run farm and homestay in **Basdol, Banepa–12, Kavrepalanchowk, Nepal**.
 
-Designed for small businesses, consultancies, IT companies, retail stores, restaurants, and professional service providers.
+**Website:** https://www.anjumultipurposefarm.com.np/  
+**Hosting:** Cloudflare Pages  
+**Repository:** `DeepeshKC/anju-multipurpose-farm-website`
 
-## Features
+The website introduces the farm, agriculture and livestock, traditional Nepali food, family homestay, village experiences, and farm stories. The interface supports **English and Nepali**.
 
-- Responsive desktop and mobile layout
-- Mobile hamburger navigation
-- Customizable company information
-- Hero section with configurable image and text
-- About and services sections
-- Contact information and email links
-- Social media links
-- Configurable footer
-- SEO title and meta description
-- Open Graph metadata for social sharing
-- Customizable favicon
+## Main features
 
-## Technologies
+- Responsive homepage and mobile navigation
+- English/Nepali language switcher with saved language preference
+- Farm, homestay, food, experiences, location, and contact sections
+- Blog listing and individual story pages
+- Password-protected blog administration and draft/published workflow
+- Search-engine metadata, Open Graph sharing image, `robots.txt`, and `sitemap.xml`
+- Phone, email, Facebook, and WhatsApp contact links
 
-- HTML5
-- CSS3
-- Vanilla JavaScript
-
-No frontend framework or build tools are required.
-
-## Project Structure
+## Project structure
 
 ```text
-business-website-template/
-│
-├── index.html
-├── README.md
-│
-├── css/
-│   └── style.css
-│
+├── index.html                 # Main homepage
+├── blog.html                  # Blog listing
+├── post.html                  # Individual story template
+├── admin/index.html           # Blog administration interface
+├── css/style.css              # Website styles and responsive layout
 ├── js/
-│   ├── config.js
-│   └── script.js
-│
-└── images/
-    └── favicon.png
+│   ├── script.js              # Navigation and language switching
+│   ├── blog.js                # Blog listing
+│   ├── post.js                # Individual story rendering
+│   └── admin.js               # Blog administration UI
+├── functions/                 # Cloudflare Pages Functions and API
+├── migrations/0001_posts.sql # D1 database schema
+├── images/                    # Website photos, sharing image, favicon
+├── _routes.json               # Pages Functions routing
+├── robots.txt
+└── sitemap.xml
 ```
 
-## Customization Guide
+`anju-farm-index.html`, if still present, is an older duplicate and is **not** the homepage served at `/`; verify that nothing references it before removing it.
 
-Most website content can be changed through:
+## Technology and hosting
 
-`js/config.js`
+- HTML5, CSS3, and vanilla JavaScript
+- GitHub source repository
+- Cloudflare Pages for hosting and deployments
+- Cloudflare Pages Functions for blog APIs
+- Cloudflare D1 for storing blog posts and login-attempt records
 
-### 1. Company Information
-
-Update the company name and other general information.
-
-### 2. SEO Settings
-
-Customize:
-- Page title
-- Meta description
-- Open Graph title
-- Open Graph description
-- Open Graph image
-
-These settings help search engines and social platforms understand the website.
-
-### 3. Hero Section
-
-Change the following:
-- Hero heading
-- Description
-- Label
-- Button text
-- Hero image URL
-- Image description (alt text)
-
-### 4. About Section
-
-Update the About heading and description to introduce the business.
-
-### 5. Services
-
-Edit the services array in `config.js` to change service names and descriptions.
-
-### 6. Contact Information
-
-Update:
-- Email address
-- Phone number
-- Business address
-
-The email and phone links use `mailto:` and `tel:`.
-
-### 7. Social Media
-
-Add the appropriate social media URLs for Facebook, Instagram, LinkedIn, and YouTube.
-
-Leave a field empty if the business does not use that platform.
-
-### 8. Footer
-
-Customize the company name and copyright text.
-
-### 9. Favicon
-
-Replace:
-
-`images/favicon.png`
-
-with the client's favicon image. Keep the filename and location unchanged unless you also update the favicon setting in `config.js`.
-
-## Styling
-
-The website's appearance is controlled by:
-
-`css/style.css`
-
-You can customize:
-- Colors
-- Fonts
-- Spacing
-- Layout
-- Buttons
-- Responsive styles
-
-## JavaScript
-
-The file `js/script.js` controls the website's interactive features and applies the settings from `config.js`.
-
-Avoid placing website content or configuration data directly into this file unless necessary.
+The public site requires no frontend build framework. The dynamic blog and admin features require the configured Cloudflare environment; opening HTML files locally does not reproduce those APIs.
 
 ## Deployment
 
-This project can be deployed as a static website using a compatible hosting service.
+1. Make and review changes in the GitHub repository.
+2. Commit and push to the branch connected to the Cloudflare Pages project.
+3. Wait for the Cloudflare Pages deployment to complete.
+4. Check the permanent website and test both desktop and mobile layouts.
+5. Verify the English/Nepali switcher, blog, contact links, and sharing preview.
 
-The current project is connected to Cloudflare through GitHub. Changes pushed to the connected repository can trigger a new deployment, depending on the deployment settings.
+**Cloudflare Pages project:** `anju-multipurpose-farm-website`  
+**Permanent public URL:** https://www.anjumultipurposefarm.com.np/
 
-## Creating a Client Website
+The non-`www` domain is configured to redirect permanently to the `www` address. The `pages.dev` address may remain available for hosting and deployment previews, but public-facing SEO and sharing links should use the permanent domain.
 
-For each new client:
+## Blog administration
 
-1. Create a separate copy of the template.
-2. Update `js/config.js` with the client's information.
-3. Replace the hero image and favicon.
-4. Customize the colors and styling if required.
-5. Test the website on desktop and mobile.
-6. Deploy the website using the client's hosting arrangement.
+The admin interface is located at `/admin/`. Authorized editors can create, edit, publish, and delete stories. Published stories are listed on `blog.html` and displayed by `post.html?slug=...`.
 
-## Important Notes
+The server-side environment needs:
 
-- Keep the existing file and folder structure unless you update the corresponding references.
-- Use valid image URLs or images stored in the project.
-- Test all navigation links and contact information before publishing.
-- This template currently uses an email link rather than a server-powered contact form.
+- A **D1 binding named `DB`** with the schema in `migrations/0001_posts.sql` applied
+- An **`ADMIN_PASSWORD`** secret
+- An **`ADMIN_SECRET`** secret for signing admin sessions
+
+Configure these in the Cloudflare Pages project settings. **Never commit actual passwords, secret values, or database credentials to GitHub.**
+
+The interface is bilingual, but switching the interface language does **not** automatically translate the text of published articles.
+
+## SEO and social sharing
+
+- `index.html`, `blog.html`, and `post.html` contain page-level metadata.
+- `images/anju-farm-social-preview.jpg` is used for social-sharing previews.
+- `robots.txt` points search engines to `sitemap.xml`.
+- The sitemap currently lists the homepage and blog index; individual dynamic blog articles are not yet listed automatically.
+- Dynamic article pages currently have limitations for article-specific search crawler metadata and previews.
+
+After updating public URLs or metadata, verify them on the permanent domain and resubmit the sitemap in Google Search Console when appropriate.
+
+## Important notes
+
+- Keep **Basdol** as the English place spelling and **बाँसडोल** in Nepali.
+- The family homestay is **operating**, not a future project.
+- The farm's Google Maps location is awaiting verification; do not replace the current notice with an unverified map pin.
+- Keep image filenames and paths consistent with their references in HTML/CSS/JS.
+- Preserve existing DNS email records when managing the domain.
+- Test any admin or database changes on the deployed Cloudflare environment.
+
+## Maintenance checklist
+
+- Confirm homepage and blog work in both languages.
+- Test mobile navigation, footer, and all contact links.
+- Confirm the latest social preview image appears when sharing the permanent URL.
+- Check `https://www.anjumultipurposefarm.com.np/robots.txt` and `/sitemap.xml`.
+- Review published blog content and indexing as the blog grows.
 
 ---
 
-**Business Website Template**  
-Built with HTML, CSS, and JavaScript.
-Website deployment verification — November 2026.
+**Anju Multipurpose Agriculture Farm**  
+Basdol, Banepa–12, Kavrepalanchowk, Nepal
