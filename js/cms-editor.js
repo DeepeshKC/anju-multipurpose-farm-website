@@ -46,35 +46,123 @@ if (!section || !mount || !toolbar || !form ||
       toolbar.appendChild(button);
     }
 
-    // Display status messages inside the CMS section.
     const statusMessage = document.createElement('p');
     statusMessage.id = 'cms-status-message';
     statusMessage.setAttribute('role', 'status');
     statusMessage.setAttribute('aria-live', 'polite');
     form.before(statusMessage);
 
+    const titleField = document.getElementById('cms-title');
+    const slugField = document.getElementById('cms-slug');
+    const categoryField = document.getElementById('cms-category');
+    const excerptField = document.getElementById('cms-excerpt');
+    const seoTitleField = document.getElementById('cms-seo-title');
+    const seoDescriptionField = document.getElementById('cms-seo-description');
+
+    let editingId = null;
+    let saving = false;
+    let loading = false;
+
     function showStatus(message, isError = false) {
       statusMessage.textContent = message;
       statusMessage.className = isError ? 'admin-error' : 'admin-note';
     }
 
-    function getField(id) {
-      return document.getElementById(id).value.trim();
-    }
-
     function clearForm() {
       form.reset();
       editor.commands.clearContent();
-      document.getElementById('cms-category').value = 'FARM STORIES';
-      showStatus('');
+
+      categoryField.value = 'FARM STORIES';
+      slugField.readOnly = false;
+
+      editingId = null;
     }
 
-    // Load the current CMS article overview.
+    function openNewDraft() {
+      if (saving || loading) return;
+
+      clearForm();
+
+      form.hidden = false;
+      saveButton.disabled = false;
+      saveButton.textContent = 'Save English draft';
+
+      showStatus('Creating a new English draft.');
+      titleField.focus();
+    }
+
+    async function openExistingDraft(id) {
+      if (saving || loading) return;
+
+      loading = true;
+      newButton.disabled = true;
+      saveButton.disabled = true;
+
+      showStatus('Loading English draft...');
+
+      try {
+        const response = await fetch(
+          `/api/admin/cms/articles/${id}`,
+          { credentials: 'same-origin' }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || 'Unable to load English draft.'
+          );
+        }
+
+        const article = data.article;
+
+        if (!article || !article.content_json) {
+          throw new Error('Article content is missing.');
+        }
+
+        clearForm();
+
+        editingId = article.id;
+
+        titleField.value = article.title || '';
+        slugField.value = article.slug || '';
+        categoryField.value = article.category || 'FARM STORIES';
+        excerptField.value = article.excerpt || '';
+        seoTitleField.value = article.seo_title || '';
+        seoDescriptionField.value = article.seo_description || '';
+
+        // Slugs cannot be changed through the current PUT API.
+        slugField.readOnly = true;
+
+        editor.commands.setContent(article.content_json);
+
+        form.hidden = false;
+        saveButton.textContent = 'Update English draft';
+
+        showStatus(`Editing English draft #${editingId}.`);
+
+        form.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+
+      } catch (error) {
+        console.error('CMS draft loading failed:', error);
+        showStatus(error.message, true);
+
+      } finally {
+        loading = false;
+        newButton.disabled = false;
+        saveButton.disabled = form.hidden;
+      }
+    }
+
     async function loadArticles() {
       try {
-        const response = await fetch('/api/admin/cms/articles', {
-          credentials: 'same-origin'
-        });
+        const response = await fetch(
+          '/api/admin/cms/articles',
+          { credentials: 'same-origin' }
+        );
 
         if (!response.ok) {
           throw new Error('Unable to load CMS articles.');
@@ -94,12 +182,37 @@ if (!section || !mount || !toolbar || !form ||
         for (const article of data.articles) {
           const item = document.createElement('li');
 
-          const title = article.english_title ||
+          const title =
+            article.english_title ||
             article.legacy_title ||
             'Untitled article';
 
-          item.textContent =
+          const label = document.createElement('span');
+          label.textContent =
             `${title} — ${article.slug} (${article.english_status || article.legacy_status})`;
+
+          item.appendChild(label);
+
+          // Only English CMS drafts can be edited here.
+          if (
+            article.english_translation_id &&
+            article.legacy_status === 'draft'
+          ) {
+            const editButton = document.createElement('button');
+
+            editButton.type = 'button';
+            editButton.textContent = 'Edit English';
+            editButton.setAttribute(
+              'aria-label',
+              `Edit English draft: ${title}`
+            );
+
+            editButton.addEventListener('click', () => {
+              openExistingDraft(article.id);
+            });
+
+            item.appendChild(editButton);
+          }
 
           articlesList.appendChild(item);
         }
@@ -113,70 +226,86 @@ if (!section || !mount || !toolbar || !form ||
     newButton.disabled = false;
     saveButton.disabled = true;
 
-    newButton.addEventListener('click', () => {
-      clearForm();
-      form.hidden = false;
-      saveButton.disabled = false;
-      document.getElementById('cms-title').focus();
-      console.log('New English draft form opened.');
-    });
-
-    let saving = false;
+    newButton.addEventListener('click', openNewDraft);
 
     form.addEventListener('submit', async event => {
       event.preventDefault();
 
-      if (saving) return;
-
+      if (saving || loading) return;
       if (!form.reportValidity()) return;
 
       if (editor.isEmpty) {
-        showStatus('Please enter article content before saving.', true);
+        showStatus('Please enter article content.', true);
         editor.commands.focus();
         return;
       }
 
       const payload = {
-        title: getField('cms-title'),
-        slug: getField('cms-slug'),
-        category: getField('cms-category'),
-        excerpt: getField('cms-excerpt'),
-        seo_title: getField('cms-seo-title'),
-        seo_description: getField('cms-seo-description'),
+        title: titleField.value.trim(),
+        category: categoryField.value.trim(),
+        excerpt: excerptField.value.trim(),
+        seo_title: seoTitleField.value.trim(),
+        seo_description: seoDescriptionField.value.trim(),
         content_json: editor.getJSON()
       };
+
+      const isEditing = editingId !== null;
+      const targetId = editingId;
+
+      if (!isEditing) {
+        payload.slug = slugField.value.trim();
+      }
 
       saving = true;
       saveButton.disabled = true;
       newButton.disabled = true;
-      showStatus('Saving English draft...');
+
+      showStatus(
+        isEditing
+          ? 'Updating English draft...'
+          : 'Saving English draft...'
+      );
 
       try {
-        const response = await fetch('/api/admin/cms/articles', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
+        const response = await fetch(
+          isEditing
+            ? `/api/admin/cms/articles/${targetId}`
+            : '/api/admin/cms/articles',
+          {
+            method: isEditing ? 'PUT' : 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          }
+        );
 
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error || 'Unable to save draft.');
+          throw new Error(
+            result.error ||
+            (isEditing
+              ? 'Unable to update English draft.'
+              : 'Unable to create English draft.')
+          );
         }
 
-        form.hidden = true;
+        const savedId = result.id;
+
         clearForm();
+        form.hidden = true;
 
         showStatus(
-          `English draft saved successfully. Article ID: ${result.id}`
+          isEditing
+            ? `English draft #${savedId} updated successfully.`
+            : `English draft created successfully. Article ID: ${savedId}`
         );
 
-        await loadArticles();
+        console.log('CMS draft saved:', result);
 
-        console.log('CMS English draft created:', result);
+        await loadArticles();
 
       } catch (error) {
         console.error('CMS draft saving failed:', error);
@@ -189,7 +318,6 @@ if (!section || !mount || !toolbar || !form ||
       }
     });
 
-    // Initial article list.
     loadArticles();
 
     console.log('Anju Farm TipTap CMS editor initialized.');
