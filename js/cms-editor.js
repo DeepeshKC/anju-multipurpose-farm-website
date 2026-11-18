@@ -265,16 +265,14 @@ if (!section || !mount || !toolbar || !form ||
     async function submitNepaliForReview(id) {
       if (saving || loading || submittingReview) return;
 
-      const confirmed = window.confirm(
+      if (!window.confirm(
         `Submit the saved Nepali draft for article #${id} for review? ` +
         'It will be locked for editing until changes are requested.'
-      );
-
-      if (!confirmed) return;
+      )) return;
 
       submittingReview = true;
       newButton.disabled = true;
-
+      saveButton.disabled = true;
       showStatus(`Submitting Nepali translation for article #${id}...`);
 
       try {
@@ -283,14 +281,11 @@ if (!section || !mount || !toolbar || !form ||
           {
             method: 'POST',
             credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
           }
         );
 
         const result = await response.json();
-
         if (!response.ok) {
           throw new Error(result.error || 'Unable to submit for review.');
         }
@@ -299,23 +294,99 @@ if (!section || !mount || !toolbar || !form ||
         if (editingId === id && editingLanguage === 'ne') {
           clearForm();
           form.hidden = true;
-          saveButton.disabled = true;
         }
 
         await loadArticles();
-
         showStatus(
           `Nepali article #${id} submitted for review ` +
           `(revision #${result.revision_number}).`
         );
-
       } catch (error) {
         console.error('Nepali review submission failed:', error);
         showStatus(error.message, true);
-
       } finally {
         submittingReview = false;
         newButton.disabled = false;
+        saveButton.disabled = form.hidden;
+      }
+    }
+
+    async function toggleReviewHistory(id, button, panel) {
+      if (!panel.hidden) {
+        panel.hidden = true;
+        button.textContent = 'Review History';
+        return;
+      }
+
+      button.disabled = true;
+      panel.hidden = false;
+      panel.replaceChildren();
+      const loadingText = document.createElement('p');
+      loadingText.textContent = 'Loading review history...';
+      panel.appendChild(loadingText);
+
+      try {
+        const data = await getJSON(
+          `/api/admin/cms/translations/${id}/reviews`
+        );
+        panel.replaceChildren();
+
+        const heading = document.createElement('h4');
+        heading.textContent = `Nepali review history — article #${id}`;
+        panel.appendChild(heading);
+
+        const status = document.createElement('p');
+        status.textContent = `Current status: ${data.translation_status}`;
+        panel.appendChild(status);
+
+        if (!data.revisions || data.revisions.length === 0) {
+          const empty = document.createElement('p');
+          empty.textContent = 'No submitted revisions yet.';
+          panel.appendChild(empty);
+        } else {
+          const historyList = document.createElement('ol');
+          for (const revision of data.revisions) {
+            const entry = document.createElement('li');
+            const decision = revision.review?.decision || 'Awaiting review';
+            const date = revision.created_at || 'Date unavailable';
+
+            const summary = document.createElement('strong');
+            summary.textContent =
+              `Revision #${revision.revision_number} — ${decision}`;
+            entry.appendChild(summary);
+
+            const details = document.createElement('p');
+            details.textContent = `Submitted: ${date}`;
+            entry.appendChild(details);
+
+            if (revision.review?.reviewed_at) {
+              const reviewed = document.createElement('p');
+              reviewed.textContent =
+                `Reviewed: ${revision.review.reviewed_at}`;
+              entry.appendChild(reviewed);
+            }
+
+            if (revision.review?.notes) {
+              const notes = document.createElement('p');
+              notes.textContent = `Feedback: ${revision.review.notes}`;
+              entry.appendChild(notes);
+            }
+
+            historyList.appendChild(entry);
+          }
+          panel.appendChild(historyList);
+        }
+        button.textContent = 'Hide Review History';
+      } catch (error) {
+        console.error('Review history loading failed:', error);
+        panel.replaceChildren();
+        const message = document.createElement('p');
+        message.textContent = `Unable to load review history: ${error.message}`;
+        message.className = 'admin-error';
+        panel.appendChild(message);
+        button.textContent = 'Review History';
+      } finally {
+        button.disabled = false;
       }
     }
 
@@ -362,52 +433,61 @@ if (!section || !mount || !toolbar || !form ||
 
             const nepaliButton = document.createElement('button');
             nepaliButton.type = 'button';
+            nepaliButton.textContent = article.nepali_translation_id
+              ? 'Edit Nepali'
+              : 'Add Nepali';
 
+            nepaliButton.addEventListener('click', () => {
+              openNepaliDraft(article.id);
+            });
+
+            // Translations under review or approved cannot be edited.
             const nepaliStatus = article.nepali_status || 'draft';
-
-            if (!article.nepali_translation_id) {
-              nepaliButton.textContent = 'Add Nepali';
-            } else if (
-              !['draft', 'changes_requested'].includes(nepaliStatus)
-            ) {
+            if (article.nepali_translation_id &&
+                !['draft', 'changes_requested'].includes(nepaliStatus)) {
               nepaliButton.textContent = 'Nepali locked';
               nepaliButton.disabled = true;
-            } else {
-              nepaliButton.textContent = 'Edit Nepali';
-            }
-
-            if (!nepaliButton.disabled) {
-              nepaliButton.addEventListener('click', () => {
-                openNepaliDraft(article.id);
-              });
             }
 
             item.appendChild(nepaliButton);
 
+            if (article.nepali_translation_id && nepaliStatus === 'draft') {
+              const submitButton = document.createElement('button');
+              submitButton.type = 'button';
+              submitButton.textContent = 'Submit for Review';
+              submitButton.addEventListener('click', () => {
+                submitNepaliForReview(article.id);
+              });
+              item.appendChild(submitButton);
+            }
+
             if (article.nepali_translation_id) {
               const translationStatus = document.createElement('span');
               translationStatus.textContent =
-                ` Nepali: ${nepaliStatus}`;
+                ` Nepali: ${article.nepali_status || 'draft'}`;
 
               item.appendChild(translationStatus);
 
-              if (nepaliStatus === 'draft') {
-                const submitButton = document.createElement('button');
-                submitButton.type = 'button';
-                submitButton.textContent = 'Submit for Review';
+              const historyButton = document.createElement('button');
+              historyButton.type = 'button';
+              historyButton.textContent = 'Review History';
+              historyButton.setAttribute(
+                'aria-label', `Review history for article #${article.id}`
+              );
 
-                submitButton.addEventListener('click', () => {
-                  submitNepaliForReview(article.id);
-                });
-
-                item.appendChild(submitButton);
-              }
+              const historyPanel = document.createElement('div');
+              historyPanel.hidden = true;
+              historyPanel.className = 'cms-review-history';
+              historyButton.addEventListener('click', () => {
+                toggleReviewHistory(article.id, historyButton, historyPanel);
+              });
+              item.appendChild(historyButton);
+              item.appendChild(historyPanel);
             }
           }
 
           articlesList.appendChild(item);
         }
-
       } catch (error) {
         console.error('CMS article listing failed:', error);
         showStatus(error.message, true);
