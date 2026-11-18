@@ -1,4 +1,3 @@
-import { Editor, StarterKit } from 'https://esm.sh/@tiptap/starter-kit@3.31.3?bundle';
 import { Editor, StarterKit } from './tiptap-bundle.js';
 
 const section = document.getElementById('cms-section');
