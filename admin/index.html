@@ -333,6 +333,27 @@
           aria-label="Article content editor"
         ></div>
 
+
+/* Make the entire TipTap editor area clickable */
+#cms-rich-editor .tiptap {
+  min-height: 180px;
+  padding: 12px;
+  box-sizing: border-box;
+  outline: none;
+  cursor: text;
+}
+
+/* Show a clear focus indicator */
+#cms-rich-editor .tiptap:focus {
+  outline: 2px solid #c9a35b;
+  outline-offset: -2px;
+}
+
+/* Improve paragraph spacing */
+#cms-rich-editor .tiptap p {
+  margin: 0 0 12px;
+}
+        
         <h3>Search Engine Optimization</h3>
 
         <label for="cms-seo-title">SEO title</label>
