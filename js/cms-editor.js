@@ -68,6 +68,7 @@ if (!section || !mount || !toolbar || !form ||
     let editingLanguage = 'en';
     let saving = false;
     let loading = false;
+    let submittingReview = false;
 
     function showStatus(message, isError = false) {
       statusMessage.textContent = message;
@@ -100,7 +101,7 @@ if (!section || !mount || !toolbar || !form ||
     }
 
     function openNewDraft() {
-      if (saving || loading) return;
+      if (saving || loading || submittingReview) return;
 
       clearForm();
 
@@ -127,7 +128,7 @@ if (!section || !mount || !toolbar || !form ||
     }
 
     async function openExistingDraft(id) {
-      if (saving || loading) return;
+      if (saving || loading || submittingReview) return;
 
       loading = true;
       newButton.disabled = true;
@@ -182,7 +183,7 @@ if (!section || !mount || !toolbar || !form ||
     }
 
     async function openNepaliDraft(id) {
-      if (saving || loading) return;
+      if (saving || loading || submittingReview) return;
 
       loading = true;
       newButton.disabled = true;
@@ -261,6 +262,63 @@ if (!section || !mount || !toolbar || !form ||
       }
     }
 
+    async function submitNepaliForReview(id) {
+      if (saving || loading || submittingReview) return;
+
+      const confirmed = window.confirm(
+        `Submit the saved Nepali draft for article #${id} for review? ` +
+        'It will be locked for editing until changes are requested.'
+      );
+
+      if (!confirmed) return;
+
+      submittingReview = true;
+      newButton.disabled = true;
+
+      showStatus(`Submitting Nepali translation for article #${id}...`);
+
+      try {
+        const response = await fetch(
+          `/api/admin/cms/translations/${id}/submit`,
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Unable to submit for review.');
+        }
+
+        // Close any editor for the submitted article: it is now locked.
+        if (editingId === id && editingLanguage === 'ne') {
+          clearForm();
+          form.hidden = true;
+          saveButton.disabled = true;
+        }
+
+        await loadArticles();
+
+        showStatus(
+          `Nepali article #${id} submitted for review ` +
+          `(revision #${result.revision_number}).`
+        );
+
+      } catch (error) {
+        console.error('Nepali review submission failed:', error);
+        showStatus(error.message, true);
+
+      } finally {
+        submittingReview = false;
+        newButton.disabled = false;
+      }
+    }
+
     async function loadArticles() {
       try {
         const data = await getJSON('/api/admin/cms/articles');
@@ -304,27 +362,52 @@ if (!section || !mount || !toolbar || !form ||
 
             const nepaliButton = document.createElement('button');
             nepaliButton.type = 'button';
-            nepaliButton.textContent = article.nepali_translation_id
-              ? 'Edit Nepali'
-              : 'Add Nepali';
 
-            nepaliButton.addEventListener('click', () => {
-              openNepaliDraft(article.id);
-            });
+            const nepaliStatus = article.nepali_status || 'draft';
+
+            if (!article.nepali_translation_id) {
+              nepaliButton.textContent = 'Add Nepali';
+            } else if (
+              !['draft', 'changes_requested'].includes(nepaliStatus)
+            ) {
+              nepaliButton.textContent = 'Nepali locked';
+              nepaliButton.disabled = true;
+            } else {
+              nepaliButton.textContent = 'Edit Nepali';
+            }
+
+            if (!nepaliButton.disabled) {
+              nepaliButton.addEventListener('click', () => {
+                openNepaliDraft(article.id);
+              });
+            }
 
             item.appendChild(nepaliButton);
 
             if (article.nepali_translation_id) {
               const translationStatus = document.createElement('span');
               translationStatus.textContent =
-                ` Nepali: ${article.nepali_status || 'draft'}`;
+                ` Nepali: ${nepaliStatus}`;
 
               item.appendChild(translationStatus);
+
+              if (nepaliStatus === 'draft') {
+                const submitButton = document.createElement('button');
+                submitButton.type = 'button';
+                submitButton.textContent = 'Submit for Review';
+
+                submitButton.addEventListener('click', () => {
+                  submitNepaliForReview(article.id);
+                });
+
+                item.appendChild(submitButton);
+              }
             }
           }
 
           articlesList.appendChild(item);
         }
+
       } catch (error) {
         console.error('CMS article listing failed:', error);
         showStatus(error.message, true);
@@ -340,7 +423,7 @@ if (!section || !mount || !toolbar || !form ||
     form.addEventListener('submit', async event => {
       event.preventDefault();
 
-      if (saving || loading) return;
+      if (saving || loading || submittingReview) return;
       if (!form.reportValidity()) return;
 
       if (editor.isEmpty) {
