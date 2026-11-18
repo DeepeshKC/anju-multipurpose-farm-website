@@ -16,7 +16,8 @@ async function findArticle(db, id) {
       en.id AS translation_id,
       en.title, en.excerpt, en.content_json,
       en.seo_title, en.seo_description,
-      en.translation_status
+      en.translation_status,
+      en.source_version
     FROM posts p
     LEFT JOIN post_translations en
       ON en.post_id = p.id AND en.language = 'en'
@@ -126,6 +127,7 @@ export async function onRequestPut(ctx) {
         UPDATE post_translations
         SET title=?, excerpt=?, content_json=?, content_html=?,
             seo_title=?, seo_description=?,
+            source_version=source_version+1,
             updated_at=datetime('now')
         WHERE post_id=? AND language='en'
           AND EXISTS (
@@ -152,7 +154,8 @@ export async function onRequestPut(ctx) {
       slug: current.slug,
       status: 'draft',
       language: 'en',
-      updated: true
+      updated: true,
+      source_version: current.source_version + 1
     });
   } catch (error) {
     console.error('CMS draft update failed', error);
