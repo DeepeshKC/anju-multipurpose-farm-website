@@ -27,6 +27,7 @@
       border-radius: 3px;
       font: inherit;
       background: white;
+      box-sizing: border-box;
     }
 
     .admin-wrap label {
@@ -76,17 +77,75 @@
       margin: 10px 0;
     }
 
+    #cms-toolbar button {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
     #cms-rich-editor {
       min-height: 260px;
       border: 1px solid #aeb7ae;
       border-radius: 3px;
-      padding: 15px;
       background: white;
+      overflow: hidden;
+    }
+
+    /* Make the TipTap content area fully clickable */
+
+    #cms-rich-editor .tiptap {
+      min-height: 260px;
+      padding: 15px;
+      box-sizing: border-box;
+      outline: none;
+      cursor: text;
+    }
+
+    /* Focus indicator */
+
+    #cms-rich-editor:focus-within {
+      border-color: #c9a35b;
+      box-shadow: 0 0 0 2px rgba(201, 163, 91, 0.25);
+    }
+
+    /* TipTap typography */
+
+    #cms-rich-editor .tiptap p {
+      margin: 0 0 12px;
+      line-height: 1.7;
+    }
+
+    #cms-rich-editor .tiptap h2,
+    #cms-rich-editor .tiptap h3,
+    #cms-rich-editor .tiptap h4 {
+      margin: 20px 0 10px;
+      line-height: 1.3;
+    }
+
+    #cms-rich-editor .tiptap ul,
+    #cms-rich-editor .tiptap ol {
+      padding-left: 28px;
+      margin: 12px 0;
+    }
+
+    #cms-rich-editor .tiptap blockquote {
+      margin: 16px 0;
+      padding: 8px 16px;
+      border-left: 3px solid #c9a35b;
+      color: #526456;
     }
 
     #cms-excerpt,
     #cms-seo-description {
       min-height: 90px;
+    }
+
+    /* Ensure hidden forms remain hidden */
+
+    #cms-form[hidden],
+    #cms-section[hidden],
+    #login-section[hidden],
+    #editor-section[hidden] {
+      display: none !important;
     }
   </style>
 
@@ -121,6 +180,7 @@
     <p id="notice" role="status" aria-live="polite"></p>
 
     <!-- Administrator login -->
+
     <section id="login-section" hidden>
 
       <h2>Administrator sign in</h2>
@@ -137,9 +197,14 @@
         >
 
         <div class="admin-actions">
-          <button class="button button-dark" type="submit">
+
+          <button
+            class="button button-dark"
+            type="submit"
+          >
             Sign in
           </button>
+
         </div>
 
       </form>
@@ -147,6 +212,7 @@
     </section>
 
     <!-- Existing blog editor -->
+
     <section id="editor-section" hidden>
 
       <div class="admin-actions">
@@ -159,7 +225,10 @@
           New article
         </button>
 
-        <button id="logout" type="button">
+        <button
+          id="logout"
+          type="button"
+        >
           Sign out
         </button>
 
@@ -169,16 +238,27 @@
         Articles
       </h2>
 
-      <ul id="posts-list" class="admin-list"></ul>
+      <ul
+        id="posts-list"
+        class="admin-list"
+      ></ul>
 
-      <h2 id="editor-heading" style="font-size: 2rem">
+      <h2
+        id="editor-heading"
+        style="font-size: 2rem"
+      >
         New article
       </h2>
 
       <form id="post-form">
 
         <label for="title">Title</label>
-        <input id="title" required maxlength="150">
+
+        <input
+          id="title"
+          required
+          maxlength="150"
+        >
 
         <label for="slug">
           URL slug (lowercase letters, numbers, hyphens)
@@ -212,13 +292,23 @@
           Article content (plain text; separate paragraphs with blank lines)
         </label>
 
-        <textarea id="content" required></textarea>
+        <textarea
+          id="content"
+          required
+        ></textarea>
 
         <label for="status">Publication status</label>
 
         <select id="status">
-          <option value="draft">Draft — private</option>
-          <option value="published">Published — public</option>
+
+          <option value="draft">
+            Draft — private
+          </option>
+
+          <option value="published">
+            Published — public
+          </option>
+
         </select>
 
         <div class="admin-actions">
@@ -245,6 +335,7 @@
     </section>
 
     <!-- New bilingual CMS editor -->
+
     <section
       id="cms-section"
       aria-labelledby="cms-heading"
@@ -253,7 +344,10 @@
 
       <hr style="margin: 50px 0">
 
-      <h2 id="cms-heading" style="font-size: 2rem">
+      <h2
+        id="cms-heading"
+        style="font-size: 2rem"
+      >
         New CMS Editor
       </h2>
 
@@ -282,9 +376,13 @@
         class="admin-list"
       ></ul>
 
+      <!-- English draft form -->
+
       <form id="cms-form" hidden>
 
-        <label for="cms-title">Article title</label>
+        <label for="cms-title">
+          Article title
+        </label>
 
         <input
           id="cms-title"
@@ -292,15 +390,20 @@
           required
         >
 
-        <label for="cms-slug">URL slug</label>
+        <label for="cms-slug">
+          URL slug
+        </label>
 
         <input
           id="cms-slug"
           maxlength="100"
+          pattern="[a-z0-9]+(-[a-z0-9]+)*"
           required
         >
 
-        <label for="cms-category">Category</label>
+        <label for="cms-category">
+          Category
+        </label>
 
         <input
           id="cms-category"
@@ -309,18 +412,21 @@
           required
         >
 
-        <label for="cms-excerpt">Short summary</label>
+        <label for="cms-excerpt">
+          Short summary
+        </label>
 
         <textarea
           id="cms-excerpt"
           maxlength="350"
         ></textarea>
 
-        <label for="cms-rich-editor">
+        <label id="cms-content-label">
           Article content
         </label>
 
         <!-- TipTap formatting controls -->
+
         <div
           id="cms-toolbar"
           role="toolbar"
@@ -328,35 +434,20 @@
         ></div>
 
         <!-- TipTap editor mount point -->
+
         <div
           id="cms-rich-editor"
           aria-label="Article content editor"
+          aria-labelledby="cms-content-label"
         ></div>
 
+        <!-- SEO fields -->
 
-/* Make the entire TipTap editor area clickable */
-#cms-rich-editor .tiptap {
-  min-height: 180px;
-  padding: 12px;
-  box-sizing: border-box;
-  outline: none;
-  cursor: text;
-}
-
-/* Show a clear focus indicator */
-#cms-rich-editor .tiptap:focus {
-  outline: 2px solid #c9a35b;
-  outline-offset: -2px;
-}
-
-/* Improve paragraph spacing */
-#cms-rich-editor .tiptap p {
-  margin: 0 0 12px;
-}
-        
         <h3>Search Engine Optimization</h3>
 
-        <label for="cms-seo-title">SEO title</label>
+        <label for="cms-seo-title">
+          SEO title
+        </label>
 
         <input
           id="cms-seo-title"
