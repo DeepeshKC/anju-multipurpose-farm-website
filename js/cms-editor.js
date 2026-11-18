@@ -390,6 +390,103 @@ if (!section || !mount || !toolbar || !form ||
       }
     }
 
+      
+    async function approveNepaliTranslation(id) {
+      if (saving || loading || submittingReview) return;
+
+      submittingReview = true;
+      newButton.disabled = true;
+      saveButton.disabled = true;
+
+      try {
+        // Retrieve the current revision from the server.
+        const history = await getJSON(
+          `/api/admin/cms/translations/${id}/reviews`
+        );
+
+        if (
+          history.translation_status !== 'in_review' ||
+          !Number.isSafeInteger(history.current_revision_id)
+        ) {
+          throw new Error(
+            'No Nepali revision is currently awaiting approval.'
+          );
+        }
+
+        const revisionId = history.current_revision_id;
+
+        const currentRevision = history.revisions.find(
+          revision => revision.revision_id === revisionId
+        );
+
+        if (!currentRevision || currentRevision.review) {
+          throw new Error(
+            'The current revision is not available for approval.'
+          );
+        }
+
+        const confirmed = window.confirm(
+          `Approve Nepali translation for article #${id}?\n\n` +
+          `Revision: #${currentRevision.revision_number}\n\n` +
+          'This will mark the translation as approved and ' +
+          'keep it locked for editing.\n\n' +
+          'The article will NOT be published.'
+        );
+
+        if (!confirmed) return;
+
+        showStatus(
+          `Approving Nepali revision #${currentRevision.revision_number}...`
+        );
+
+        const response = await fetch(
+          `/api/admin/cms/translations/${id}/approve`,
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              revision_id: revisionId
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error || 'Unable to approve Nepali translation.'
+          );
+        }
+
+        if (editingId === id && editingLanguage === 'ne') {
+          clearForm();
+          form.hidden = true;
+        }
+
+        await loadArticles();
+
+        showStatus(
+          `Nepali translation for article #${id} approved successfully ` +
+          `(revision #${currentRevision.revision_number}).`
+        );
+
+        console.log('Nepali translation approved:', result);
+
+      } catch (error) {
+        console.error('Nepali approval failed:', error);
+        showStatus(error.message, true);
+
+      } finally {
+        submittingReview = false;
+        newButton.disabled = false;
+        saveButton.disabled = form.hidden;
+      }
+    }
+
+      
     async function loadArticles() {
       try {
         const data = await getJSON('/api/admin/cms/articles');
@@ -483,6 +580,36 @@ if (!section || !mount || !toolbar || !form ||
               });
               item.appendChild(historyButton);
               item.appendChild(historyPanel);
+                
+              // Approval is available only for submitted
+              // Nepali translations awaiting review.
+              if (nepaliStatus === 'in_review') {
+                const approveButton = document.createElement('button');
+
+                approveButton.type = 'button';
+                approveButton.textContent = 'Approve Nepali';
+                approveButton.setAttribute(
+                  'aria-label',
+                  `Approve Nepali translation for article #${article.id}`
+                );
+
+                approveButton.addEventListener('click', async () => {
+                  if (approveButton.disabled) return;
+
+                  approveButton.disabled = true;
+
+                  try {
+                    await approveNepaliTranslation(article.id);
+                  } finally {
+                    if (approveButton.isConnected) {
+                      approveButton.disabled = false;
+                    }
+                  }
+                });
+
+                item.appendChild(approveButton);
+              }
+
             }
           }
 
