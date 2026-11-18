@@ -42,7 +42,8 @@ export async function onRequestPost(ctx) {
         ne.seo_title,
         ne.seo_description,
         ne.source_english_updated_at,
-        ne.translation_status
+        ne.translation_status,
+        en.source_version AS english_source_version
       FROM post_translations ne
       JOIN posts p ON p.id = ne.post_id
       JOIN post_translations en
@@ -84,6 +85,7 @@ export async function onRequestPost(ctx) {
           seo_title,
           seo_description,
           source_english_updated_at,
+          english_source_version,
           created_by
         )
         SELECT
@@ -100,9 +102,13 @@ export async function onRequestPost(ctx) {
           t.seo_title,
           t.seo_description,
           t.source_english_updated_at,
+          en.source_version,
           'admin'
         FROM post_translations t
         JOIN posts p ON p.id = t.post_id
+        JOIN post_translations en
+          ON en.post_id = p.id
+          AND en.language = 'en'
         WHERE t.id = ?
           AND p.status = 'draft'
           AND t.translation_status IN (
@@ -139,7 +145,10 @@ export async function onRequestPost(ctx) {
     }
 
     const revision = await db.prepare(`
-      SELECT id, revision_number
+      SELECT
+        id,
+        revision_number,
+        english_source_version
       FROM translation_revisions
       WHERE translation_id = ?
       ORDER BY revision_number DESC
@@ -152,6 +161,7 @@ export async function onRequestPost(ctx) {
       translation_status: 'in_review',
       revision_id: revision.id,
       revision_number: revision.revision_number,
+      english_source_version: revision.english_source_version,
       submitted: true
     });
 
