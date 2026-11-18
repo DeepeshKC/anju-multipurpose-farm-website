@@ -486,6 +486,126 @@ if (!section || !mount || !toolbar || !form ||
       }
     }
 
+    async function requestNepaliChanges(id) {
+      if (saving || loading || submittingReview) return;
+
+      submittingReview = true;
+      newButton.disabled = true;
+      saveButton.disabled = true;
+
+      try {
+        // Retrieve the revision currently awaiting review.
+        const history = await getJSON(
+          `/api/admin/cms/translations/${id}/reviews`
+        );
+
+        if (
+          history.translation_status !== 'in_review' ||
+          !Number.isSafeInteger(history.current_revision_id)
+        ) {
+          throw new Error(
+            'No Nepali revision is currently awaiting review.'
+          );
+        }
+
+        const revisionId = history.current_revision_id;
+
+        const currentRevision = history.revisions.find(
+          revision => revision.revision_id === revisionId
+        );
+
+        if (!currentRevision || currentRevision.review) {
+          throw new Error(
+            'The current revision is not available for review.'
+          );
+        }
+
+        const notes = window.prompt(
+          `Request changes for article #${id}\n` +
+          `Nepali revision #${currentRevision.revision_number}\n\n` +
+          'Explain the corrections required:'
+        );
+
+        // Cancel means no changes are requested.
+        if (notes === null) return;
+
+        const feedback = notes.trim();
+
+        if (!feedback) {
+          showStatus(
+            'Review feedback is required to request changes.',
+            true
+          );
+          return;
+        }
+
+        if (feedback.length > 2000) {
+          showStatus(
+            'Review feedback must be 2000 characters or fewer.',
+            true
+          );
+          return;
+        }
+
+        const confirmed = window.confirm(
+          `Request changes to Nepali revision ` +
+          `#${currentRevision.revision_number}?\n\n` +
+          `Feedback:\n${feedback}\n\n` +
+          'The translation will be unlocked for editing. ' +
+          'The article will remain unpublished.'
+        );
+
+        if (!confirmed) return;
+
+        showStatus(
+          `Requesting changes for Nepali revision ` +
+          `#${currentRevision.revision_number}...`
+        );
+
+        const response = await fetch(
+          `/api/admin/cms/translations/${id}/request-changes`,
+          {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              revision_id: revisionId,
+              notes: feedback
+            })
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error || 'Unable to request Nepali changes.'
+          );
+        }
+
+        await loadArticles();
+
+        showStatus(
+          `Changes requested for Nepali article #${id} ` +
+          `(revision #${currentRevision.revision_number}). ` +
+          'The translation can now be edited.'
+        );
+
+        console.log('Nepali changes requested:', result);
+
+      } catch (error) {
+        console.error('Nepali change request failed:', error);
+        showStatus(error.message, true);
+
+      } finally {
+        submittingReview = false;
+        newButton.disabled = false;
+        saveButton.disabled = form.hidden;
+      }
+    }
+
       
     async function loadArticles() {
       try {
@@ -608,6 +728,35 @@ if (!section || !mount || !toolbar || !form ||
                 });
 
                 item.appendChild(approveButton);
+              }
+
+              // Allow corrections to be requested only
+              // while a Nepali revision is in review.
+              if (nepaliStatus === 'in_review') {
+                const changesButton = document.createElement('button');
+
+                changesButton.type = 'button';
+                changesButton.textContent = 'Request Changes';
+                changesButton.setAttribute(
+                  'aria-label',
+                  `Request Nepali changes for article #${article.id}`
+                );
+
+                changesButton.addEventListener('click', async () => {
+                  if (changesButton.disabled) return;
+
+                  changesButton.disabled = true;
+
+                  try {
+                    await requestNepaliChanges(article.id);
+                  } finally {
+                    if (changesButton.isConnected) {
+                      changesButton.disabled = false;
+                    }
+                  }
+                });
+
+                item.appendChild(changesButton);
               }
 
             }
