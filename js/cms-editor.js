@@ -1,6 +1,4 @@
-
-import { Editor } from 'https://cdn.jsdelivr.net/npm/@tiptap/core@3.31.3/+esm';
-import StarterKit from 'https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@3.31.3/+esm';
+import { Editor, StarterKit } from 'https://esm.sh/@tiptap/starter-kit@3.31.3?bundle';
 
 const section = document.getElementById('cms-section');
 const mount = document.getElementById('cms-rich-editor');
