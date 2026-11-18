@@ -43,9 +43,29 @@ if (!section || !mount || !toolbar) {
 
     // Temporarily display the editor for formatting tests.
     // Saving remains disabled until API integration.
-    document.getElementById('cms-form').hidden = false;
-    document.getElementById('cms-new').disabled = true;
-    document.getElementById('cms-save').disabled = true;
+    const form = document.getElementById('cms-form');
+const newButton = document.getElementById('cms-new');
+const saveButton = document.getElementById('cms-save');
+
+form.hidden = true;
+newButton.disabled = false;
+saveButton.disabled = true;
+
+newButton.addEventListener('click', () => {
+  // Clear all fields from the previous article.
+  form.reset();
+
+  // Clear the rich-text editor.
+  editor.commands.clearContent();
+
+  // Show the form for a new English draft.
+  form.hidden = false;
+
+  // Focus the article title.
+  document.getElementById('cms-title').focus();
+
+  console.log('New English draft form opened.');
+});
 
     console.log('Anju Farm TipTap editor initialized.');
   } catch (error) {
