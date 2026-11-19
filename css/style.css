@@ -1005,3 +1005,5 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--yellow);outline-off
 .intro-description p { color: #4a514b; }
 .contact-section > p a { color: #f7f3e9; text-decoration: underline; text-underline-offset: 4px; }
 .contact-section > p a:hover { color: var(--yellow); }
+
+.blog-article-content figure.farm-inline-image{margin:2rem 0}.blog-article-content figure.farm-inline-image img{display:block;max-width:100%;height:auto;border-radius:6px}.blog-article-content figure.farm-inline-image figcaption{font-size:.9rem;color:#586052;margin-top:.5rem}
