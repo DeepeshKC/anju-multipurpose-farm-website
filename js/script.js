@@ -89,13 +89,26 @@ if (menuToggle && navLinks) {
   });
 }
 
-// Restore the visitor's last selected language; English is the default.
+
+// Initialize the language from the URL when specified.
+// Otherwise restore the visitor's saved preference.
+const urlLanguage = new URLSearchParams(window.location.search).get("lang");
+
+let initialLanguage = "en";
+
 try {
   const savedLanguage = localStorage.getItem("anjuFarmLanguage");
 
   if (savedLanguage === "en" || savedLanguage === "ne") {
-    setLanguage(savedLanguage);
+    initialLanguage = savedLanguage;
   }
 } catch {
-  // English is the default language when browser storage is unavailable.
+  // English remains the default.
 }
+
+// The article URL takes priority over the saved preference.
+if (urlLanguage === "en" || urlLanguage === "ne") {
+  initialLanguage = urlLanguage;
+}
+
+setLanguage(initialLanguage);
