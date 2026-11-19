@@ -4,10 +4,10 @@ import { Editor, StarterKit, Node } from './tiptap-bundle.js';
 const FarmImage = Node.create({
   name: 'farmImage', group: 'block', atom: true, selectable: true,
   addAttributes() { return {
-    src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null }
+    src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null }, size: { default: 'large' }, align: { default: 'center' }
   }; },
   parseHTML() { return [{ tag: 'figure[data-farm-image]' }]; },
-  renderHTML({ HTMLAttributes: a }) { return ['figure', { 'data-farm-image': '' },
+  renderHTML({ HTMLAttributes: a }) { return ['figure', { 'data-farm-image': '', class: `farm-inline-image farm-size-${a.size || 'large'} farm-align-${a.align || 'center'}` },
     ['img', { src: a.src, alt: a.alt, loading: 'lazy' }],
     ['figcaption', {}, a.caption || '']
   ]; }
@@ -73,25 +73,128 @@ updateWordCount();
   ['Redo', () => editor.chain().focus().redo().run()]
 ];
 
-    controls.splice(8, 0, ['Insert image', async () => {
-      const choice = window.prompt('Enter the media ID from your uploaded images (see Media uploads below):');
-      if (choice === null) return;
-      const id = Number(choice);
-      if (!Number.isSafeInteger(id) || id < 1) { window.alert('Enter a valid media ID.'); return; }
+    // Keep image selection within the article workflow; no numeric IDs needed.
+    const mediaDialog = document.createElement('dialog');
+    mediaDialog.id = 'cms-image-dialog';
+    mediaDialog.className = 'cms-image-dialog';
+    mediaDialog.innerHTML = `<div class="cms-image-dialog-body">
+      <div class="cms-image-dialog-heading"><h3>Insert or edit photograph</h3><button type="button" data-close>Close</button></div>
+      <p class="admin-note">Upload from your computer or choose a previously uploaded photograph.</p>
+      <label>Upload from computer <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" data-file></label>
+      <button type="button" data-upload>Upload and select</button>
+      <p role="status" aria-live="polite" data-status></p>
+      <div class="cms-image-gallery" data-gallery></div>
+      <label>Image size <select data-size><option value="small">Small</option><option value="medium">Medium</option><option value="large" selected>Large</option><option value="full">Full width</option></select></label>
+      <label>Alignment <select data-align><option value="left">Left</option><option value="center" selected>Center</option><option value="right">Right</option></select></label>
+      <label>Alt text <input type="text" maxlength="500" data-alt></label>
+      <label>Caption <input type="text" maxlength="500" data-caption></label>
+      <div class="cms-image-dialog-actions"><button type="button" data-insert>Insert / apply changes</button><button type="button" data-remove>Remove selected image</button></div>
+    </div>`;
+    document.body.appendChild(mediaDialog);
+    const $image = selector => mediaDialog.querySelector(`[data-${selector}]`);
+    let chosenMedia = null;
+    let imageEditPosition = null;
+    let savedInsertPosition = null;
+    const imageStatus = message => { $image('status').textContent = message; };
+    const allowedImage = file => file && ['image/jpeg','image/png','image/webp','image/avif'].includes(file.type) && file.size > 0 && file.size <= 10000000;
+    async function mediaPost(url, body) {
+      const response = await fetch(url,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+      const data = await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+      return data;
+    }
+    async function loadMediaGallery(selectedId) {
+      const response = await fetch('/api/admin/media',{credentials:'same-origin'});
+      const data = await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error || 'Could not load photographs');
+      const gallery = $image('gallery'); gallery.replaceChildren();
+      for (const item of (data.items || [])) {
+        const tile = document.createElement('button');tile.type='button';tile.className='cms-image-tile';
+        const img=document.createElement('img');img.src=item.secure_url;img.alt=item.alt_en || 'Uploaded photograph';img.loading='lazy';
+        const label=document.createElement('span');label.textContent=`Photo #${item.id}`;
+        tile.append(img,label);gallery.append(tile);
+        tile.addEventListener('click',()=>{
+          chosenMedia=item;
+          gallery.querySelectorAll('button').forEach(b=>b.classList.toggle('selected',b===tile));
+          const ne=editingLanguage==='ne';
+          $image('alt').value=(ne?item.alt_ne:item.alt_en)||'';
+          $image('caption').value=(ne?item.caption_ne:item.caption_en)||'';
+        });
+        if(item.id===selectedId) tile.click();
+      }
+      if(!(data.items||[]).length) imageStatus('No images uploaded yet. Choose a file above.');
+    }
+    async function openImageDialog() {
+      const selected=editor.state.selection;
+      const node=selected.node?.type?.name==='farmImage' ? selected.node : null;
+      imageEditPosition=node?selected.from:null;
+      savedInsertPosition=selected.from;
+      chosenMedia=null;
+      $image('size').value=node?.attrs?.size||'large';
+      $image('align').value=node?.attrs?.align||'center';
+      $image('alt').value=node?.attrs?.alt||'';
+      $image('caption').value=node?.attrs?.caption||'';
+      $image('remove').hidden=!node;
+      imageStatus(node?'Editing selected image. Choose a different photo to replace it, if needed.':'Select a photograph.');
+      mediaDialog.showModal();
       try {
-        const response = await fetch('/api/admin/media', { credentials: 'same-origin' });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Unable to load media');
-        const media = (data.items || []).find(item => item.id === id);
-        if (!media) throw new Error('Media ID not found in staging library');
-        const ne = editingLanguage === 'ne';
-        editor.chain().focus().insertContent({ type: 'farmImage', attrs: {
-          src: media.secure_url, mediaId: media.id,
-          alt: (ne ? media.alt_ne : media.alt_en) || '',
-          caption: (ne ? media.caption_ne : media.caption_en) || ''
-        } }).run();
-      } catch (error) { window.alert(error.message); }
-    }]);
+        await loadMediaGallery(node?.attrs?.mediaId);
+        if(node && !chosenMedia) chosenMedia={id:node.attrs.mediaId,secure_url:node.attrs.src};
+      } catch(error) {imageStatus(error.message);}
+    }
+    controls.splice(8,0,['Insert / edit image',openImageDialog]);
+    $image('close').addEventListener('click',()=>mediaDialog.close());
+    $image('upload').addEventListener('click',async()=>{
+      const file=$image('file').files?.[0];
+      if(!allowedImage(file)){imageStatus('Choose a JPEG, PNG, WebP or AVIF image under 10 MB.');return;}
+      const button=$image('upload');button.disabled=true;
+      try {
+        imageStatus('Uploading photograph…');
+        const signed=await mediaPost('/api/admin/media/sign',{filename:file.name,mime_type:file.type,size:file.size});
+        const form=new FormData();
+        for(const key of ['api_key','timestamp','folder','public_id','signature'])form.append(key,String(signed[key]));
+        form.append('file',file);
+        const response=await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(signed.cloud_name.trim())}/image/upload`,{method:'POST',body:form});
+        const uploaded=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(uploaded.error?.message||'Cloudinary upload failed');
+        const ne=editingLanguage==='ne';
+        const saved=await mediaPost('/api/admin/media',{
+          public_id:uploaded.public_id,secure_url:uploaded.secure_url,format:uploaded.format,
+          width:uploaded.width,height:uploaded.height,bytes:uploaded.bytes,
+          alt_en:ne?'':$image('alt').value.trim(),alt_ne:ne?$image('alt').value.trim():'',
+          caption_en:ne?'':$image('caption').value.trim(),caption_ne:ne?$image('caption').value.trim():''
+        });
+        await loadMediaGallery(saved.id);
+        imageStatus('Uploaded. Click Insert / apply changes to place the image.');
+      } catch(error){imageStatus(`Upload failed: ${error.message}`);}finally{button.disabled=false;}
+    });
+    $image('insert').addEventListener('click',()=>{
+      if(!chosenMedia){imageStatus('Select or upload a photograph first.');return;}
+      const attrs={src:chosenMedia.secure_url,mediaId:chosenMedia.id,
+        alt:$image('alt').value.trim(),caption:$image('caption').value.trim(),
+        size:$image('size').value,align:$image('align').value};
+      if(imageEditPosition!==null && editor.state.doc.nodeAt(imageEditPosition)?.type?.name==='farmImage'){
+        const tr=editor.state.tr.setNodeMarkup(imageEditPosition,undefined,attrs);
+        editor.view.dispatch(tr);
+      } else {
+        editor.chain().focus().insertContentAt(savedInsertPosition,{type:'farmImage',attrs}).run();
+      }
+      mediaDialog.close();imageStatus('Image added to the article. Save your draft to keep changes.');
+    });
+    $image('remove').addEventListener('click',()=>{
+      if(imageEditPosition===null)return;
+      const node=editor.state.doc.nodeAt(imageEditPosition);
+      if(node?.type?.name==='farmImage')editor.view.dispatch(editor.state.tr.delete(imageEditPosition,imageEditPosition+node.nodeSize));
+      mediaDialog.close();
+    });
+    // Double-click a photo to edit its size, position, caption, or replace it.
+    mount.addEventListener('dblclick',event=>{
+      const figure=event.target.closest('figure[data-farm-image]');
+      if(!figure)return;
+      const pos=editor.view.posAtDOM(figure,0);
+      editor.commands.setNodeSelection(pos);
+      openImageDialog();
+    });
     for (const [label, action] of controls) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -177,6 +280,7 @@ updateWordCount();
           destination.setAttribute('alt', node.getAttribute('alt') || '');
           destination.setAttribute('loading', 'lazy');
         }
+        if (node.tagName === 'FIGURE') { const classes=(node.getAttribute('class')||'').split(/\s+/).filter(c=>/^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right))$/.test(c)); destination.setAttribute('class',classes.join(' ')); }
         for (const child of node.childNodes) destination.appendChild(copyNode(child));
         return destination;
       }
