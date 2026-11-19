@@ -725,6 +725,27 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       
     // Publication uses the last saved snapshot, never unsaved editor changes.
     let publishing = false;
+    const publicationButtons = new Set();
+
+    function setPublicationBusy(busy) {
+      for (const button of publicationButtons) {
+        if (!button.isConnected) {
+          publicationButtons.delete(button);
+          continue;
+        }
+        button.disabled = busy;
+      }
+    }
+
+    function publicationDetail(revision) {
+      if (!revision) return '';
+      const parts = [];
+      if (revision.revision_id != null) parts.push(`revision #${revision.revision_id}`);
+      if (revision.language_published_at) {
+        parts.push(`server time: ${revision.language_published_at} UTC`);
+      }
+      return parts.length ? ` (${parts.join(' · ')})` : '';
+    }
 
     async function publishArticle(id, language) {
       if (saving || loading || submittingReview || publishing) return;
@@ -742,11 +763,12 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       const confirmed = window.confirm(
         `Publish the last saved ${name} version of article #${id}?` +
         warning +
-        '\n\nThis makes the saved version publicly visible.'
+        '\n\nOnly the last saved version is published. Continue?'
       );
       if (!confirmed) return;
 
       publishing = true;
+      setPublicationBusy(true);
       newButton.disabled = true;
       saveButton.disabled = true;
       showStatus(`Publishing ${name} article #${id}...`);
@@ -763,12 +785,15 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
           throw new Error(result.error || `Unable to publish ${name}.`);
         }
         await loadArticles();
-        showStatus(`${name} article #${id} published successfully.`);
+        showStatus(`${name} article #${id} published successfully${publicationDetail(result.published)}.`);
+        // Keep the result visible after the article list refreshes.
+        statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (error) {
         console.error(`${name} publication failed:`, error);
         showStatus(error.message, true);
       } finally {
         publishing = false;
+        setPublicationBusy(false);
         newButton.disabled = false;
         saveButton.disabled = form.hidden;
       }
@@ -779,6 +804,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         const data = await getJSON('/api/admin/cms/articles');
 
         articlesList.replaceChildren();
+        publicationButtons.clear();
 
         if (!data.articles || data.articles.length === 0) {
           const empty = document.createElement('li');
@@ -805,6 +831,21 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
           item.appendChild(label);
 
+          const publicationMeta = document.createElement('small');
+          publicationMeta.className = 'cms-publication-meta';
+          const englishInfo = englishPublished
+            ? `English published: revision #${article.english_published_revision_id}` +
+              (article.english_published_at ? ` · ${article.english_published_at} UTC` : '')
+            : 'English not published';
+          const nepaliInfo = nepaliPublished
+            ? `Nepali published: revision #${article.nepali_published_revision_id}` +
+              (article.nepali_published_at ? ` · ${article.nepali_published_at} UTC` : '')
+            : 'Nepali not published';
+          publicationMeta.textContent = `${englishInfo} | ${nepaliInfo}`;
+          publicationMeta.style.display = 'block';
+          publicationMeta.style.margin = '4px 0 8px';
+          item.appendChild(publicationMeta);
+
           if (
             article.english_translation_id &&
             article.legacy_status === 'draft'
@@ -829,6 +870,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             publishEnglishButton.addEventListener('click', () => {
               publishArticle(article.id, 'en');
             });
+            publicationButtons.add(publishEnglishButton);
             item.appendChild(publishEnglishButton);
 
             const nepaliButton = document.createElement('button');
@@ -896,6 +938,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
                 publishNepaliButton.addEventListener('click', () => {
                   publishArticle(article.id, 'ne');
                 });
+                publicationButtons.add(publishNepaliButton);
                 item.appendChild(publishNepaliButton);
               }
 
