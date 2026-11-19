@@ -109,6 +109,9 @@
 
     /* TipTap typography */
 
+    #cms-rich-editor figure, .blog-article-content figure { margin: 24px 0; }
+    #cms-rich-editor figure img { display:block;max-width:100%;height:auto;border-radius:6px; }
+    #cms-rich-editor figcaption { color:#596154;font-size:0.9em;margin-top:6px; }
     #cms-rich-editor .tiptap p {
       margin: 0 0 12px;
       line-height: 1.7;
@@ -446,6 +449,8 @@
           role="toolbar"
           aria-label="Formatting toolbar"
         ></div>
+
+        <p class="admin-note">To place a photograph between paragraphs, position your cursor, select <strong>Insert image</strong>, and enter the saved media ID shown in the Media uploads panel. Images are saved inside the article.</p>
 
         <!-- TipTap editor mount point -->
 
