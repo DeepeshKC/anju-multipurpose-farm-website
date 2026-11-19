@@ -193,26 +193,23 @@ export function renderDocument(doc) {
     if (node.type === 'hardBreak') return '<br>';
     if (node.type === 'horizontalRule') return '<hr>';
 
-   // TipTap may omit content for empty paragraphs.
-if (
-  node.content === undefined &&
-  node.type !== 'paragraph'
-) {
-  throw new Error('Invalid TipTap content');
-}
+    // TipTap may omit the content property for empty paragraphs.
+    // Other container nodes must still provide a content array.
+    if (
+      node.content === undefined &&
+      node.type !== 'paragraph'
+    ) {
+      throw new Error('Invalid TipTap content');
+    }
 
-if (
-  node.content !== undefined &&
-  !Array.isArray(node.content)
-) {
-  throw new Error('Invalid TipTap content');
-}
+    if (
+      node.content !== undefined &&
+      !Array.isArray(node.content)
+    ) {
+      throw new Error('Invalid TipTap content');
+    }
 
-const children = (node.content ?? [])
-  .map(child => render(child, depth + 1))
-  .join('');
-
-    const children = node.content
+    const children = (node.content ?? [])
       .map(child => render(child, depth + 1))
       .join('');
 
