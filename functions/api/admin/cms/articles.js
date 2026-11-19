@@ -21,16 +21,22 @@ export async function onRequestGet(ctx) {
         p.status AS legacy_status,
         p.updated_at,
 
+      
         en.id AS english_translation_id,
         en.title AS english_title,
         en.translation_status AS english_status,
         en.source_version AS english_source_version,
+        en.published_english_revision_id AS english_published_revision_id,
+        en.language_published_at AS english_published_at,
+
 
         ne.id AS nepali_translation_id,
         ne.title AS nepali_title,
         ne.translation_status AS nepali_status,
         ne.approved_revision_id AS nepali_approved_revision_id,
         ne.published_revision_id AS nepali_published_revision_id,
+        ne.language_published_at AS nepali_published_at,
+
 
         approved.english_source_version
           AS nepali_approved_source_version,
