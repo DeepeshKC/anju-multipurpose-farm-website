@@ -1,7 +1,7 @@
 import { reply, guard, sameOrigin } from '../../../../../_shared.js';
 
 // POST /api/admin/cms/articles/:id/publish
-// Publishes an immutable English snapshot; does not change legacy posts.status.
+// Publish an immutable English snapshot without changing the editable draft.
 export async function onRequestPost(ctx) {
   const denied = await guard(ctx);
   if (denied) return denied;
@@ -27,8 +27,9 @@ export async function onRequestPost(ctx) {
       return reply({ error: 'CMS article must retain legacy draft status' }, 409);
     }
 
-    // Both statements run in a D1 batch transaction. The INSERT copies the
-    // current draft, while the UPDATE resolves that same source version.
+    // D1 batch executes both statements transactionally. A concurrent draft
+    // version change prevents the pointer update; any newly inserted snapshot
+    // remains unpublished and cannot affect public content.
     const results = await db.batch([
       db.prepare(`
         INSERT OR IGNORE INTO english_publication_revisions
@@ -46,7 +47,15 @@ export async function onRequestPost(ctx) {
               WHERE r.translation_id = post_translations.id
                 AND r.source_version = ?
             ),
-            language_published_at = datetime('now')
+            language_published_at = CASE
+              WHEN published_english_revision_id = (
+                SELECT r.id FROM english_publication_revisions r
+                WHERE r.translation_id = post_translations.id
+                  AND r.source_version = ?
+              ) AND language_published_at IS NOT NULL
+              THEN language_published_at
+              ELSE datetime('now')
+            END
         WHERE id = ? AND language = 'en' AND source_version = ?
           AND EXISTS (
             SELECT 1 FROM posts p
@@ -58,8 +67,11 @@ export async function onRequestPost(ctx) {
               AND r.source_version = ?
           )
       `).bind(
-        article.source_version, article.translation_id,
-        article.source_version, article.source_version
+        article.source_version,
+        article.source_version,
+        article.translation_id,
+        article.source_version,
+        article.source_version
       )
     ]);
 
@@ -74,6 +86,10 @@ export async function onRequestPost(ctx) {
         ON r.id = t.published_english_revision_id AND r.translation_id = t.id
       WHERE t.id = ? AND t.language = 'en'
     `).bind(article.translation_id).first();
+
+    if (!published || published.source_version !== article.source_version) {
+      return reply({ error: 'Unable to confirm published revision; check status' }, 409);
+    }
 
     return reply({ ok: true, article_id: id, language: 'en', published });
   } catch (error) {
