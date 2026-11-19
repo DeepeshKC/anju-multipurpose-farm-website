@@ -1,5 +1,17 @@
 
-import { Editor, StarterKit } from './tiptap-bundle.js';
+import { Editor, StarterKit, Node } from './tiptap-bundle.js';
+
+const FarmImage = Node.create({
+  name: 'farmImage', group: 'block', atom: true, selectable: true,
+  addAttributes() { return {
+    src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null }
+  }; },
+  parseHTML() { return [{ tag: 'figure[data-farm-image]' }]; },
+  renderHTML({ HTMLAttributes: a }) { return ['figure', { 'data-farm-image': '' },
+    ['img', { src: a.src, alt: a.alt, loading: 'lazy' }],
+    ['figcaption', {}, a.caption || '']
+  ]; }
+});
 
 const section = document.getElementById('cms-section');
 const mount = document.getElementById('cms-rich-editor');
@@ -19,6 +31,7 @@ if (!section || !mount || !toolbar || !form ||
     const editor = new Editor({
       element: mount,
       extensions: [
+        FarmImage,
         StarterKit.configure({
           heading: { levels: [2, 3, 4] },
           link: false,
@@ -60,6 +73,25 @@ updateWordCount();
   ['Redo', () => editor.chain().focus().redo().run()]
 ];
 
+    controls.splice(8, 0, ['Insert image', async () => {
+      const choice = window.prompt('Enter the media ID from your uploaded images (see Media uploads below):');
+      if (choice === null) return;
+      const id = Number(choice);
+      if (!Number.isSafeInteger(id) || id < 1) { window.alert('Enter a valid media ID.'); return; }
+      try {
+        const response = await fetch('/api/admin/media', { credentials: 'same-origin' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to load media');
+        const media = (data.items || []).find(item => item.id === id);
+        if (!media) throw new Error('Media ID not found in staging library');
+        const ne = editingLanguage === 'ne';
+        editor.chain().focus().insertContent({ type: 'farmImage', attrs: {
+          src: media.secure_url, mediaId: media.id,
+          alt: (ne ? media.alt_ne : media.alt_en) || '',
+          caption: (ne ? media.caption_ne : media.caption_en) || ''
+        } }).run();
+      } catch (error) { window.alert(error.message); }
+    }]);
     for (const [label, action] of controls) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -130,7 +162,7 @@ updateWordCount();
       const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
       const allowed = new Set([
         'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
-        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL'
+        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'FIGURE', 'IMG', 'FIGCAPTION'
       ]);
       function copyNode(node) {
         if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
@@ -138,6 +170,13 @@ updateWordCount();
         const fragment = document.createDocumentFragment();
         const destination = allowed.has(node.tagName)
           ? document.createElement(node.tagName.toLowerCase()) : fragment;
+        if (node.tagName === 'IMG') {
+          const src = node.getAttribute('src') || '';
+          if (!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(src)) return fragment;
+          destination.setAttribute('src', src);
+          destination.setAttribute('alt', node.getAttribute('alt') || '');
+          destination.setAttribute('loading', 'lazy');
+        }
         for (const child of node.childNodes) destination.appendChild(copyNode(child));
         return destination;
       }

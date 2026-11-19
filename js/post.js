@@ -31,7 +31,8 @@ function sanitizeArticleHTML(html) {
     'EM',
     'I',
     'BR',
-    'BLOCKQUOTE'
+    'BLOCKQUOTE',
+    'FIGURE', 'FIGCAPTION', 'IMG'
   ]);
 
   const blockedTags = new Set([
@@ -84,9 +85,17 @@ function sanitizeArticleHTML(html) {
         continue;
       }
 
-      // Remove all HTML attributes, including event handlers.
-      for (const attribute of [...child.attributes]) {
-        child.removeAttribute(attribute.name);
+      // Keep only safe Cloudinary image URLs and accessibility metadata.
+      const src = child.tagName === 'IMG' ? child.getAttribute('src') : null;
+      const alt = child.tagName === 'IMG' ? child.getAttribute('alt') : null;
+      for (const attribute of [...child.attributes]) child.removeAttribute(attribute.name);
+      if (child.tagName === 'IMG') {
+        if (!src || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src)) {
+          child.remove(); continue;
+        }
+        child.setAttribute('src', src);
+        child.setAttribute('alt', alt || '');
+        child.setAttribute('loading', 'lazy');
       }
     }
   }
