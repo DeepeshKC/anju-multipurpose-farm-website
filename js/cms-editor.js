@@ -658,195 +658,6 @@ if (!section || !mount || !toolbar || !form ||
               openNepaliDraft(article.id);
             });
 
-            const nepaliStatus = article.nepali_status || 'draft';
-
-            if (
-              article.nepali_translation_id &&
-              !['draft', 'changes_requested'].includes(nepaliStatus)
-            ) {
-              nepaliButton.textContent = 'Nepali locked';
-              nepaliButton.disabled = true;
-            }
-
-            item.appendChild(nepaliButton);
-
-            if (
-              article.nepali_translation_id &&
-              nepaliStatus === 'draft'
-            ) {
-              const submitButton = document.createElement('button');
-              submitButton.type = 'button';
-              submitButton.textContent = 'Submit for Review';
-
-              submitButton.addEventListener('click', () => {
-                submitNepaliForReview(article.id);
-              });
-
-              item.appendChild(submitButton);
-            }
-
-            if (article.nepali_translation_id) {
-              const translationStatus = document.createElement('span');
-
-              translationStatus.textContent =
-                ` Nepali: ${article.nepali_status || 'draft'}`;
-
-              item.appendChild(translationStatus);
-
-              // Source consistency is separate from editorial approval.
-              const sourceLabels = {
-                current: 'Current',
-                outdated: 'Outdated — revalidation required',
-                unverified: 'Unverified — revalidation required',
-                pending_review: 'Pending review',
-                not_approved: 'Not approved',
-                not_started: 'Not started'
-              };
-
-              const sourceStatus = article.nepali_source_status;
-              const sourceText = sourceLabels[sourceStatus] || 'Unknown';
-
-              const sourceLabel = document.createElement('span');
-              sourceLabel.textContent =
-                ` | Source consistency: ${sourceText}`;
-
-              sourceLabel.setAttribute(
-                'aria-label',
-                `Nepali source consistency: ${sourceText}`
-              );
-
-              item.appendChild(sourceLabel);
-
-              const historyButton = document.createElement('button');
-              historyButton.type = 'button';
-              historyButton.textContent = 'Review History';
-
-              historyButton.setAttribute(
-                'aria-label',
-                `Review history for article #${article.id}`
-              );
-
-              const historyPanel = document.createElement('div');
-              historyPanel.hidden = true;
-              historyPanel.className = 'cms-review-history';
-
-              historyButton.addEventListener('click', () => {
-                toggleReviewHistory(
-                  article.id,
-                  historyButton,
-                  historyPanel
-                );
-              });
-
-              item.appendChild(historyButton);
-              item.appendChild(historyPanel);
-
-              if (nepaliStatus === 'in_review') {
-                const approveButton = document.createElement('button');
-
-                approveButton.type = 'button';
-                approveButton.textContent = 'Approve Nepali';
-
-                approveButton.setAttribute(
-                  'aria-label',
-                  `Approve Nepali translation for article #${article.id}`
-                );
-
-                approveButton.addEventListener('click', async () => {
-                  if (approveButton.disabled) return;
-
-                  approveButton.disabled = true;
-
-                  try {
-                    await approveNepaliTranslation(article.id);
-                  } finally {
-                    if (approveButton.isConnected) {
-                      approveButton.disabled = false;
-                    }
-                  }
-                });
-
-                item.appendChild(approveButton);
-              }
-
-              if (nepaliStatus === 'in_review') {
-                const changesButton = document.createElement('button');
-
-                changesButton.type = 'button';
-                changesButton.textContent = 'Request Changes';
-
-                changesButton.setAttribute(
-                  'aria-label',
-                  `Request Nepali changes for article #${article.id}`
-                );
-
-                changesButton.addEventListener('click', async () => {
-                  if (changesButton.disabled) return;
-
-                  changesButton.disabled = true;
-
-                  try {
-                    await requestNepaliChanges(article.id);
-                  } finally {
-                    if (changesButton.isConnected) {
-                      changesButton.disabled = false;
-                    }
-                  }
-                });
-
-                item.appendChild(changesButton);
-              }
-            }
-          }
-
-          articlesList.appendChild(item);
-        }
-
-      } catch (error) {
-        console.error('CMS article listing failed:', error);
-        showStatus(error.message, true);
-      }
-    }
-
-
-        for (const article of data.articles) {
-          const item = document.createElement('li');
-
-          const title =
-            article.english_title ||
-            article.legacy_title ||
-            'Untitled article';
-
-          const label = document.createElement('span');
-          label.textContent =
-            `${title} — ${article.slug} (${article.english_status || article.legacy_status}) `;
-
-          item.appendChild(label);
-
-          if (
-            article.english_translation_id &&
-            article.legacy_status === 'draft'
-          ) {
-            const englishButton = document.createElement('button');
-            englishButton.type = 'button';
-            englishButton.textContent = 'Edit English';
-
-            englishButton.addEventListener('click', () => {
-              openExistingDraft(article.id);
-            });
-
-            item.appendChild(englishButton);
-
-            const nepaliButton = document.createElement('button');
-            nepaliButton.type = 'button';
-            nepaliButton.textContent = article.nepali_translation_id
-              ? 'Edit Nepali'
-              : 'Add Nepali';
-
-            nepaliButton.addEventListener('click', () => {
-              openNepaliDraft(article.id);
-            });
-
             // Translations under review or approved cannot be edited.
             const nepaliStatus = article.nepali_status || 'draft';
             if (article.nepali_translation_id &&
@@ -873,6 +684,23 @@ if (!section || !mount || !toolbar || !form ||
                 ` Nepali: ${article.nepali_status || 'draft'}`;
 
               item.appendChild(translationStatus);
+
+              // Source consistency is separate from editorial approval.
+              const sourceLabels = {
+                current: 'Current',
+                outdated: 'Outdated — revalidation required',
+                unverified: 'Unverified — revalidation required',
+                pending_review: 'Pending review',
+                not_approved: 'Not approved',
+                not_started: 'Not started'
+              };
+              const sourceStatus = article.nepali_source_status;
+              const sourceText = sourceLabels[sourceStatus] || 'Unknown';
+              const sourceLabel = document.createElement('span');
+              sourceLabel.textContent = ` | Source consistency: ${sourceText}`;
+              sourceLabel.setAttribute('aria-label',
+                `Nepali source consistency: ${sourceText}`);
+              item.appendChild(sourceLabel);
 
               const historyButton = document.createElement('button');
               historyButton.type = 'button';
@@ -957,6 +785,7 @@ if (!section || !mount || !toolbar || !form ||
         console.error('CMS article listing failed:', error);
         showStatus(error.message, true);
       }
+    }
 
     form.hidden = true;
     newButton.disabled = false;
