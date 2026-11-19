@@ -19,3 +19,12 @@ export async function onRequestPost(ctx){
  return reply({id:result.id,secure_url});
  }catch(e){console.error(e);return reply({error:'Media database unavailable or migration missing'},503);}
 }
+
+export async function onRequestGet(ctx) {
+ const denied = await guard(ctx); if (denied) return denied;
+ if (!ctx.env.DB) return reply({error:'Database unavailable'},503);
+ try {
+  const data = await ctx.env.DB.prepare('SELECT id, secure_url, alt_en, alt_ne, caption_en, caption_ne FROM cloudinary_media ORDER BY id DESC LIMIT 100').all();
+  return reply({items:data.results || []});
+ } catch(e) { console.error(e); return reply({error:'Media library unavailable'},503); }
+}
