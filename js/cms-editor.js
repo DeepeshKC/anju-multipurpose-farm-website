@@ -27,16 +27,18 @@ if (!section || !mount || !toolbar || !form ||
     });
 
     const controls = [
-      ['Bold', () => editor.chain().focus().toggleBold().run()],
-      ['Italic', () => editor.chain().focus().toggleItalic().run()],
-      ['H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run()],
-      ['H3', () => editor.chain().focus().toggleHeading({ level: 3 }).run()],
-      ['Bullet list', () => editor.chain().focus().toggleBulletList().run()],
-      ['Numbered list', () => editor.chain().focus().toggleOrderedList().run()],
-      ['Quote', () => editor.chain().focus().toggleBlockquote().run()],
-      ['Undo', () => editor.chain().focus().undo().run()],
-      ['Redo', () => editor.chain().focus().redo().run()]
-    ];
+  ['Paragraph', () => editor.chain().focus().setParagraph().run()],
+  ['H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run()],
+  ['H3', () => editor.chain().focus().toggleHeading({ level: 3 }).run()],
+  ['Bold', () => editor.chain().focus().toggleBold().run()],
+  ['Italic', () => editor.chain().focus().toggleItalic().run()],
+  ['Bullet list', () => editor.chain().focus().toggleBulletList().run()],
+  ['Numbered list', () => editor.chain().focus().toggleOrderedList().run()],
+  ['Quote', () => editor.chain().focus().toggleBlockquote().run()],
+  ['Clear formatting', () => editor.chain().focus().clearNodes().unsetAllMarks().run()],
+  ['Undo', () => editor.chain().focus().undo().run()],
+  ['Redo', () => editor.chain().focus().redo().run()]
+];
 
     for (const [label, action] of controls) {
       const button = document.createElement('button');
