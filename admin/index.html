@@ -151,6 +151,7 @@
 
   <script src="../js/admin.js" defer></script>
   <script type="module" src="../js/cms-editor.js"></script>
+  <script type="module" src="../js/cms-media.js"></script>
 </head>
 
 <body>
@@ -376,6 +377,19 @@
         class="admin-list"
       ></ul>
 
+      <section id="cms-media-panel" aria-label="Cloudinary media uploads" style="margin:24px 0;padding:20px;border:1px solid #ccc;border-radius:8px">
+        <h3>Media uploads (staging)</h3>
+        <p class="admin-note">Upload an image to the staging Cloudinary library. This does not attach or publish the image in an article yet.</p>
+        <label for="cms-media-file">Image (JPEG, PNG, WebP, AVIF; maximum 10 MB)</label>
+        <input id="cms-media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
+        <label for="cms-media-alt-en">English alt text</label><input id="cms-media-alt-en" maxlength="500">
+        <label for="cms-media-alt-ne">Nepali alt text</label><input id="cms-media-alt-ne" maxlength="500">
+        <label for="cms-media-caption-en">English caption</label><input id="cms-media-caption-en" maxlength="500">
+        <label for="cms-media-caption-ne">Nepali caption</label><input id="cms-media-caption-ne" maxlength="500">
+        <button type="button" id="cms-media-upload">Upload image</button>
+        <p id="cms-media-status" role="status" aria-live="polite"></p>
+        <div id="cms-media-result"></div>
+      </section>
       <!-- English draft form -->
 
       <form id="cms-form" hidden>
