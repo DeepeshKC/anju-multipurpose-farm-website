@@ -7,10 +7,12 @@ const toolbar = document.getElementById('cms-toolbar');
 const form = document.getElementById('cms-form');
 const newButton = document.getElementById('cms-new');
 const saveButton = document.getElementById('cms-save');
+const previewButton = document.getElementById('cms-preview');
+const cancelButton = document.getElementById('cms-cancel');
 const articlesList = document.getElementById('cms-articles-list');
 
 if (!section || !mount || !toolbar || !form ||
-    !newButton || !saveButton || !articlesList) {
+    !newButton || !saveButton || !previewButton || !cancelButton || !articlesList) {
   console.error('CMS editor HTML elements are missing.');
 } else {
   try {
@@ -89,6 +91,94 @@ updateWordCount();
     let saving = false;
     let loading = false;
     let submittingReview = false;
+    let savedEditorSnapshot = null;
+
+    function currentEditorSnapshot() {
+      return JSON.stringify({
+        title: titleField.value,
+        slug: slugField.value,
+        category: categoryField.value,
+        excerpt: excerptField.value,
+        seoTitle: seoTitleField.value,
+        seoDescription: seoDescriptionField.value,
+        content: editor.getJSON()
+      });
+    }
+
+    function recordEditorSnapshot() {
+      savedEditorSnapshot = currentEditorSnapshot();
+    }
+
+    function closeEditor() {
+      if (saving || loading || submittingReview || publishing || form.hidden) return;
+      if (savedEditorSnapshot !== null &&
+          currentEditorSnapshot() !== savedEditorSnapshot &&
+          !window.confirm('Discard unsaved changes and return to the article list?')) {
+        return;
+      }
+      clearForm();
+      form.hidden = true;
+      saveButton.disabled = true;
+      previewButton.disabled = true;
+      showStatus('Editor closed. No changes were saved.');
+      articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // TipTap StarterKit produces a limited set of nodes. Rebuild preview HTML
+    // from a strict allowlist rather than trusting arbitrary HTML strings.
+    function safePreviewHtml(rawHtml) {
+      const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
+      const allowed = new Set([
+        'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
+        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL'
+      ]);
+      function copyNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
+        if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+        const fragment = document.createDocumentFragment();
+        const destination = allowed.has(node.tagName)
+          ? document.createElement(node.tagName.toLowerCase()) : fragment;
+        for (const child of node.childNodes) destination.appendChild(copyNode(child));
+        return destination;
+      }
+      const holder = document.createElement('div');
+      for (const node of parsed.body.childNodes) holder.appendChild(copyNode(node));
+      return holder.innerHTML;
+    }
+
+    function escapePreviewText(value) {
+      return String(value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+
+    function previewArticle() {
+      if (form.hidden || saving || loading || submittingReview || publishing) return;
+      const language = editingLanguage === 'ne' ? 'ne' : 'en';
+      const title = escapePreviewText(titleField.value.trim() || 'Untitled draft');
+      const category = escapePreviewText(categoryField.value.trim());
+      const excerpt = escapePreviewText(excerptField.value.trim());
+      const content = safePreviewHtml(editor.getHTML());
+      const html = `<!doctype html><html lang="${language}"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer"><title>Draft Preview — ${title}</title>
+<style>
+:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f8f6ef;color:#252c24;font:17px/1.75 Georgia,serif}
+header{padding:12px 5%;background:#6b342d;color:white;font:600 13px/1.4 Arial,sans-serif;letter-spacing:.06em}
+main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12px/1.5 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#7c6251}
+h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}
+.article{margin-top:32px}.article h2,.article h3,.article h4{line-height:1.3;margin-top:1.8em}.article blockquote{border-left:4px solid #9b7453;padding-left:18px;margin-left:0;color:#555}
+.article p{margin:1em 0}.article li{margin:.3em 0}
+</style></head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
+<main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
+<div class="article">${content}</div></main></body></html>`;
+      const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+      const tab = window.open(blobUrl, '_blank');
+      if (tab) tab.opener = null;
+      else showStatus('Preview was blocked. Please allow pop-ups for staging.', true);
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    }
+
 
     function showStatus(message, isError = false) {
       statusMessage.textContent = message;
@@ -124,9 +214,11 @@ updateWordCount();
       if (saving || loading || submittingReview || publishing) return;
 
       clearForm();
+      recordEditorSnapshot();
 
       form.hidden = false;
       saveButton.disabled = false;
+      previewButton.disabled = false;
       saveButton.textContent = 'Save English draft';
 
       showStatus('Creating a new English draft.');
@@ -182,7 +274,9 @@ updateWordCount();
         editor.commands.setContent(article.content_json);
 
         form.hidden = false;
+        recordEditorSnapshot();
         saveButton.textContent = 'Update English draft';
+        previewButton.disabled = false;
 
         showStatus(`Editing English draft #${editingId}.`);
 
@@ -256,7 +350,9 @@ updateWordCount();
         }
 
         form.hidden = false;
+        recordEditorSnapshot();
         saveButton.textContent = 'Save Nepali draft';
+        previewButton.disabled = false;
 
         showStatus(
           nepaliData.exists
@@ -891,6 +987,9 @@ updateWordCount();
     form.hidden = true;
     newButton.disabled = false;
     saveButton.disabled = true;
+    previewButton.disabled = true;
+    cancelButton.addEventListener('click', closeEditor);
+    previewButton.addEventListener('click', previewArticle);
 
     newButton.addEventListener('click', openNewDraft);
 
