@@ -121,7 +121,7 @@ updateWordCount();
     }
 
     function openNewDraft() {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       clearForm();
 
@@ -148,7 +148,7 @@ updateWordCount();
     }
 
     async function openExistingDraft(id) {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       loading = true;
       newButton.disabled = true;
@@ -203,7 +203,7 @@ updateWordCount();
     }
 
     async function openNepaliDraft(id) {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       loading = true;
       newButton.disabled = true;
@@ -283,7 +283,7 @@ updateWordCount();
     }
 
     async function submitNepaliForReview(id) {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       if (!window.confirm(
         `Submit the saved Nepali draft for article #${id} for review? ` +
@@ -412,7 +412,7 @@ updateWordCount();
 
       
     async function approveNepaliTranslation(id) {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       submittingReview = true;
       newButton.disabled = true;
@@ -507,7 +507,7 @@ updateWordCount();
     }
 
     async function requestNepaliChanges(id) {
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
 
       submittingReview = true;
       newButton.disabled = true;
@@ -627,6 +627,57 @@ updateWordCount();
     }
 
       
+    // Publication uses the last saved snapshot, never unsaved editor changes.
+    let publishing = false;
+
+    async function publishArticle(id, language) {
+      if (saving || loading || submittingReview || publishing) return;
+
+      const isNepali = language === 'ne';
+      const name = isNepali ? 'Nepali' : 'English';
+      const endpoint = isNepali
+        ? `/api/admin/cms/translations/${id}/publish`
+        : `/api/admin/cms/articles/${id}/publish`;
+
+      const warning = editingId === id && !form.hidden
+        ? '\n\nYou have an editor open. Unsaved changes will NOT be published.'
+        : '';
+
+      const confirmed = window.confirm(
+        `Publish the last saved ${name} version of article #${id}?` +
+        warning +
+        '\n\nThis makes the saved version publicly visible.'
+      );
+      if (!confirmed) return;
+
+      publishing = true;
+      newButton.disabled = true;
+      saveButton.disabled = true;
+      showStatus(`Publishing ${name} article #${id}...`);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const result = await response.json();
+        if (!response.ok || result.ok === false) {
+          throw new Error(result.error || `Unable to publish ${name}.`);
+        }
+        await loadArticles();
+        showStatus(`${name} article #${id} published successfully.`);
+      } catch (error) {
+        console.error(`${name} publication failed:`, error);
+        showStatus(error.message, true);
+      } finally {
+        publishing = false;
+        newButton.disabled = false;
+        saveButton.disabled = form.hidden;
+      }
+    }
+
     async function loadArticles() {
       try {
         const data = await getJSON('/api/admin/cms/articles');
@@ -649,8 +700,12 @@ updateWordCount();
             'Untitled article';
 
           const label = document.createElement('span');
+          const englishPublished = article.english_published_revision_id != null;
+          const nepaliPublished = article.nepali_published_revision_id != null;
           label.textContent =
-            `${title} — ${article.slug} (${article.english_status || article.legacy_status}) `;
+            `${title} — ${article.slug} ` +
+            `(English: ${englishPublished ? 'Published' : 'Not published'}; ` +
+            `Nepali: ${nepaliPublished ? 'Published' : 'Not published'}) `;
 
           item.appendChild(label);
 
@@ -667,6 +722,18 @@ updateWordCount();
             });
 
             item.appendChild(englishButton);
+
+            const publishEnglishButton = document.createElement('button');
+            publishEnglishButton.type = 'button';
+            publishEnglishButton.textContent = englishPublished
+              ? 'Publish English update'
+              : 'Publish English';
+            publishEnglishButton.setAttribute('aria-label',
+              `Publish saved English draft for article #${article.id}`);
+            publishEnglishButton.addEventListener('click', () => {
+              publishArticle(article.id, 'en');
+            });
+            item.appendChild(publishEnglishButton);
 
             const nepaliButton = document.createElement('button');
             nepaliButton.type = 'button';
@@ -721,6 +788,20 @@ updateWordCount();
               sourceLabel.setAttribute('aria-label',
                 `Nepali source consistency: ${sourceText}`);
               item.appendChild(sourceLabel);
+
+              if (nepaliStatus === 'approved' && sourceStatus === 'current') {
+                const publishNepaliButton = document.createElement('button');
+                publishNepaliButton.type = 'button';
+                publishNepaliButton.textContent = nepaliPublished
+                  ? 'Publish Nepali update'
+                  : 'Publish Nepali';
+                publishNepaliButton.setAttribute('aria-label',
+                  `Publish approved Nepali revision for article #${article.id}`);
+                publishNepaliButton.addEventListener('click', () => {
+                  publishArticle(article.id, 'ne');
+                });
+                item.appendChild(publishNepaliButton);
+              }
 
               const historyButton = document.createElement('button');
               historyButton.type = 'button';
@@ -816,7 +897,7 @@ updateWordCount();
     form.addEventListener('submit', async event => {
       event.preventDefault();
 
-      if (saving || loading || submittingReview) return;
+      if (saving || loading || submittingReview || publishing) return;
       if (!form.reportValidity()) return;
 
       if (editor.isEmpty) {
