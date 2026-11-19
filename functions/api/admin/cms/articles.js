@@ -198,13 +198,14 @@ export function renderDocument(doc) {
     }
 
     if (node.type === 'farmImage') {
-      const { src, alt = '', caption = '', mediaId } = attrs;
+      const { src, alt = '', caption = '', mediaId, size = 'large', align = 'center' } = attrs;
       if (node.content !== undefined || !Number.isSafeInteger(mediaId) || mediaId < 1 ||
           typeof src !== 'string' || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src) ||
-          typeof alt !== 'string' || alt.length > 500 || typeof caption !== 'string' || caption.length > 500) {
+          typeof alt !== 'string' || alt.length > 500 || typeof caption !== 'string' || caption.length > 500 ||
+          !['small','medium','large','full'].includes(size) || !['left','center','right'].includes(align)) {
         throw new Error('Invalid inline image');
       }
-      return `<figure class="farm-inline-image"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy"><figcaption>${escapeHtml(caption)}</figcaption></figure>`;
+      return `<figure class="farm-inline-image farm-size-${size} farm-align-${align}"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy"><figcaption>${escapeHtml(caption)}</figcaption></figure>`;
     }
     if (node.type === 'hardBreak') return '<br>';
     if (node.type === 'horizontalRule') return '<hr>';
