@@ -957,7 +957,6 @@ if (!section || !mount || !toolbar || !form ||
         console.error('CMS article listing failed:', error);
         showStatus(error.message, true);
       }
-    }
 
     form.hidden = true;
     newButton.disabled = false;
