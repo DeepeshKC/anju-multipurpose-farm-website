@@ -26,6 +26,24 @@ if (!section || !mount || !toolbar || !form ||
       content: '<p></p>'
     });
 
+      const wordCounter = document.createElement('p');
+wordCounter.id = 'cms-word-count';
+wordCounter.className = 'admin-note';
+wordCounter.setAttribute('aria-live', 'off');
+mount.after(wordCounter);
+
+function updateWordCount() {
+  const text = editor.getText().trim();
+  const words = text ? text.split(/\s+/u).length : 0;
+  const characters = [...text].length;
+
+  wordCounter.textContent =
+    `${words} words · ${characters} characters`;
+}
+
+editor.on('update', updateWordCount);
+updateWordCount();
+      
     const controls = [
   ['Paragraph', () => editor.chain().focus().setParagraph().run()],
   ['H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run()],
