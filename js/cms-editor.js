@@ -60,19 +60,86 @@ const FarmImage = Node.create({
     const move = document.createElement('span'); move.className='farm-drag-label';
     move.textContent='⠿ Drag to reposition'; move.contentEditable='false'; move.draggable=true;
     windowEl.append(img, ...handles, rotate); figure.append(move, windowEl, caption);
-    // Keep the native ProseMirror drag pipeline intact. Select the node before
-    // dragstart so its structured JSON, rather than a browser image URL, moves.
-    figure.addEventListener('dragstart', event => {
-      const pos = getPos();
-      if (typeof pos !== 'number') { event.preventDefault(); return; }
-      editor.commands.setNodeSelection(pos);
+    // Deterministic pointer-based block movement. Native HTML drag-and-drop is
+    // unreliable for custom ProseMirror NodeViews (especially nested handles).
+    // Move only on release, so selection and image sizing stay responsive.
+    figure.draggable = false;
+    move.draggable = false;
+    move.setAttribute('role', 'button');
+    move.setAttribute('tabindex', '0');
+    move.setAttribute('aria-label', 'Drag image to a new paragraph position');
+    let activeMove = null;
+    const marker = document.createElement('div');
+    marker.className = 'farm-drop-indicator';
+    marker.setAttribute('aria-hidden', 'true');
+    const clearMove = () => {
+      window.removeEventListener('pointermove', onMovePointer, true);
+      window.removeEventListener('pointerup', onMoveRelease, true);
+      window.removeEventListener('pointercancel', onMoveCancel, true);
+      marker.remove();
+      figure.classList.remove('farm-is-dragging');
+      activeMove = null;
+    };
+    const dropBoundary = (x, y) => {
+      const view = editor.view;
+      const hit = view.posAtCoords({left:x, top:y});
+      if (!hit) return null;
+      const $hit = view.state.doc.resolve(hit.pos);
+      // Find a top-level block. We never insert inside a paragraph or image.
+      if ($hit.depth < 1) return null;
+      const blockPos = $hit.before(1);
+      const block = $hit.node(1);
+      const dom = view.nodeDOM(blockPos);
+      const rect = dom?.getBoundingClientRect?.();
+      const after = rect ? y > rect.top + rect.height / 2 : hit.pos > blockPos + block.nodeSize / 2;
+      const boundary = blockPos + (after ? block.nodeSize : 0);
+      return {boundary, rect, after};
+    };
+    const onMovePointer = e => {
+      if (!activeMove || e.pointerId !== activeMove.pointerId) return;
+      const target = dropBoundary(e.clientX, e.clientY);
+      activeMove.target = target;
+      if (!target?.rect) { marker.remove(); return; }
+      if (!marker.isConnected) document.body.appendChild(marker);
+      marker.style.left = `${target.rect.left}px`;
+      marker.style.top = `${target.after ? target.rect.bottom : target.rect.top}px`;
+      marker.style.width = `${target.rect.width}px`;
+    };
+    const onMoveRelease = e => {
+      if (!activeMove || e.pointerId !== activeMove.pointerId) return;
+      const target = activeMove.target || dropBoundary(e.clientX, e.clientY);
+      const from = activeMove.from;
+      clearMove();
+      if (!target) return;
+      const {state, view} = editor;
+      const nodeToMove = state.doc.nodeAt(from);
+      if (!nodeToMove || nodeToMove.type.name !== 'farmImage') return;
+      const end = from + nodeToMove.nodeSize;
+      const dest = target.boundary;
+      if (dest >= from && dest <= end) return;
+      // Delete first, then map the destination through the deletion.
+      let tr = state.tr.delete(from, end);
+      const mapped = tr.mapping.map(dest);
+      tr = tr.insert(mapped, nodeToMove);
+      // Keep the moved image selected after the document transaction.
+      view.dispatch(tr);
+      editor.commands.setNodeSelection(mapped);
+      view.focus();
+    };
+    const onMoveCancel = e => {
+      if (activeMove && e.pointerId === activeMove.pointerId) clearMove();
+    };
+    move.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || activeMove) return;
+      const from = getPos();
+      if (typeof from !== 'number') return;
+      e.preventDefault(); e.stopPropagation();
+      editor.commands.setNodeSelection(from);
+      activeMove = {pointerId:e.pointerId, from, target:null};
       figure.classList.add('farm-is-dragging');
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-    });
-    figure.addEventListener('dragend', () => figure.classList.remove('farm-is-dragging'));
-    move.addEventListener('pointerdown', () => {
-      const pos = getPos();
-      if (typeof pos === 'number') editor.commands.setNodeSelection(pos);
+      window.addEventListener('pointermove', onMovePointer, true);
+      window.addEventListener('pointerup', onMoveRelease, true);
+      window.addEventListener('pointercancel', onMoveCancel, true);
     });
     const updateDisplay = () => {
       const a = current.attrs;
@@ -154,7 +221,8 @@ const FarmImage = Node.create({
     return { dom: figure, update(next) { if (next.type !== current.type) return false; current = next; updateDisplay(); return true; },
       selectNode() { figure.dataset.selected = 'true'; figure.classList.add('ProseMirror-selectednode'); },
       deselectNode() { delete figure.dataset.selected; figure.classList.remove('ProseMirror-selectednode'); },
-      stopEvent(e) { return handles.some(h => h === e.target) || e.target === rotate; },
+      stopEvent(e) { return handles.some(h => h === e.target) || e.target === rotate || e.target === move || move.contains(e.target); },
+      destroy() { if (activeMove) clearMove(); },
       ignoreMutation() { return true; }
     };
   }; }
