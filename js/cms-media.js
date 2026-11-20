@@ -36,11 +36,34 @@ function renderTrash(){
   restore.addEventListener('click',async()=>{restore.disabled=true;try{await request(`/api/admin/media/${item.id}/restore`,'POST');await Promise.all([load(),loadTrash()]);$('cms-media-trash-status').textContent=`Photograph #${item.id} restored.`;}catch(e){$('cms-media-trash-status').textContent=e.message;}finally{restore.disabled=false;}});
   card.append(restore);
   const purge=document.createElement('button');purge.type='button';purge.textContent='Permanently delete';purge.className='farm-media-secondary';
-  const deleted=Date.parse((item.deleted_at||'').replace(' ','T')+'Z');
-  const eligible=Number.isFinite(deleted)&&Date.now()-deleted>=30*86400000;
-  purge.disabled=!eligible;purge.title=eligible?'Irreversible deletion from Cloudinary':'Available after 30 days in Trash';
-  purge.addEventListener('click',async()=>{if(!confirm(`Permanently delete photograph #${item.id} from Cloudinary? This cannot be undone.`))return;purge.disabled=true;try{await request(`/api/admin/media/${item.id}/purge`,'DELETE');await loadTrash();$('cms-media-trash-status').textContent=`Photograph #${item.id} permanently deleted.`;}catch(e){$('cms-media-trash-status').textContent=e.message;}finally{purge.disabled=false;}});
-  card.append(purge);grid.append(card);
+  // SQLite datetime values are UTC. Show the restriction clearly without changing server rules.
+  const rawDate=String(item.deleted_at||'').trim();
+  const normalizedDate=rawDate.includes('T')?rawDate:rawDate.replace(' ','T');
+  const deleted=Date.parse(normalizedDate && !/(Z|[+-]\d{2}:?\d{2})$/i.test(normalizedDate)?normalizedDate+'Z':normalizedDate);
+  const eligibleAt=Number.isFinite(deleted)?deleted+30*86400000:NaN;
+  const eligible=Number.isFinite(eligibleAt)&&Date.now()>=eligibleAt;
+  const restriction=document.createElement('p');
+  restriction.className='farm-media-trash-restriction';
+  restriction.style.cssText='font-size:0.82rem;line-height:1.5;margin:0.45rem 0 0;color:#5b675e;';
+  if(!eligible){
+   purge.disabled=true;
+   purge.setAttribute('aria-disabled','true');
+   purge.style.cssText='opacity:0.48;cursor:not-allowed;background:#e9e9e3;color:#5d665f;border-color:#c8cec6;';
+   const available=Number.isFinite(eligibleAt)?new Date(eligibleAt).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric',timeZone:'UTC'}):null;
+   restriction.textContent=available?`Permanent deletion available from ${available} (after 30 days).`:'Permanent deletion requires a valid Trash date and at least 30 days of retention.';
+   purge.title=restriction.textContent;
+  }else{
+   restriction.textContent='Permanent deletion is irreversible and requires confirmation.';
+   purge.title='Irreversible deletion from Cloudinary';
+  }
+  purge.addEventListener('click',async()=>{
+   if(!eligible)return;
+   if(!confirm(`Permanently delete photograph #${item.id} from Cloudinary? This cannot be undone.`))return;
+   purge.disabled=true;
+   try{await request(`/api/admin/media/${item.id}/purge`,'DELETE');await loadTrash();$('cms-media-trash-status').textContent=`Photograph #${item.id} permanently deleted.`;}
+   catch(e){$('cms-media-trash-status').textContent=e.message;purge.disabled=false;}
+  });
+  card.append(purge,restriction);grid.append(card);
  }
  if(!trashItems.length){const p=document.createElement('p');p.textContent='Photograph Trash is empty.';grid.append(p);}
  $('cms-media-trash-more').hidden=!trashMore;
