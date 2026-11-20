@@ -1079,3 +1079,27 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--yellow);outline-off
 #cms-rich-editor .tiptap{font-size:calc(1rem * var(--cms-editor-zoom,1));min-height:380px;max-width:100%;}
 #cms-rich-editor .tiptap p,#cms-rich-editor .tiptap h2,#cms-rich-editor .tiptap h3,#cms-rich-editor .tiptap h4{white-space:normal}
 @media(max-width:600px){.cms-word-ribbon{position:static}.cms-word-ribbon button{padding:5px 7px}}
+
+
+/* Unified editorial ribbon: existing CMS editor, no new save or publish path. */
+#cms-section {max-width: min(1440px, 98vw);}
+#cms-section #cms-form {max-width: 100%;}
+#cms-section #cms-rich-editor {width:100%;max-width:100%;box-sizing:border-box;}
+#cms-section #cms-rich-editor .tiptap {min-height:520px;padding:clamp(18px,3vw,42px);box-sizing:border-box;}
+.cms-document-workbench{border:1px solid #d8d4ca;background:#fff;border-radius:10px 10px 0 0;overflow:visible;margin-top:12px;box-shadow:0 3px 12px rgba(35,40,30,.05)}
+.cms-ribbon-tabs{display:flex;gap:3px;flex-wrap:wrap;padding:8px 12px 0;background:#f5f4ef;border-bottom:1px solid #d8d4ca}
+.cms-ribbon-tabs button{border:0;background:transparent;padding:10px 16px;cursor:pointer;border-radius:6px 6px 0 0;color:#394536;font-weight:600}
+.cms-ribbon-tabs button[aria-selected=true]{background:#fff;color:#205e42;box-shadow:inset 0 -3px #277451}
+.cms-ribbon-panels{min-height:76px;padding:12px;background:#fff}
+.cms-ribbon-panel{display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.cms-ribbon-panel[hidden]{display:none!important}
+.cms-ribbon-controls{position:static!important;top:auto!important;z-index:auto!important;background:transparent!important;border:0!important;padding:0!important;display:flex;gap:7px;flex-wrap:wrap}
+.cms-ribbon-panel .cms-word-ribbon{position:static!important;top:auto!important;border:0!important;padding:0!important;background:transparent!important;display:flex;flex-wrap:wrap;gap:8px}
+.cms-ribbon-panel button,.cms-ribbon-panel select,.cms-ribbon-panel input{font:inherit;font-size:13px;border:1px solid #d2d6ce;border-radius:6px;background:#fff;padding:9px 11px;color:#293a2e;max-width:100%}
+.cms-ribbon-panel button:hover{background:#e9f1e9;border-color:#96b39d}
+.cms-ribbon-panel button:focus-visible,.cms-ribbon-tabs button:focus-visible{outline:2px solid #246b4c;outline-offset:2px}
+.cms-ribbon-panel .cms-find-input{min-width:220px}
+.cms-review-tools{display:flex;flex-wrap:wrap;gap:8px}
+.cms-view-note{color:#687466;font-size:12px}
+#cms-rich-editor.cms-focus-writing{max-width:900px!important;margin-inline:auto}
+@media(max-width:700px){.cms-ribbon-tabs button{padding:9px 10px}.cms-ribbon-panels{padding:8px}.cms-ribbon-panel button{padding:7px 8px}#cms-section #cms-rich-editor .tiptap{padding:16px;min-height:360px}}
