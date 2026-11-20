@@ -1137,3 +1137,8 @@ body:has(#cms-section:not([hidden])) main {max-width:1480px;width:min(96%,1480px
 #cms-rich-editor .farm-rotate-button {border-color:#267e5a!important;color:#205a45!important}
 #cms-word-count {font:12px system-ui,sans-serif;color:#627468;text-align:right;padding:8px 5px}
 @media(max-width:760px){body:has(#cms-section:not([hidden])) main{width:100%;padding:0 12px}.cms-workbench-heading{padding:12px}.cms-workbench-hint{display:none!important}.cms-ribbon-panels{padding:10px}.cms-ribbon-panel button,.cms-ribbon-panel select{padding:8px!important}.cms-editor-status{display:none}#cms-section #cms-rich-editor .tiptap{min-height:400px;padding:20px!important}}
+
+/* Visible insertion line for reliable pointer-based image repositioning */
+.farm-drop-indicator {position:fixed; height:0; border-top:3px solid #267a57; z-index:99999; pointer-events:none; box-shadow:0 0 0 1px white;}
+#cms-rich-editor .farm-drag-label {touch-action:none; cursor:grab;}
+#cms-rich-editor .farm-is-dragging .farm-drag-label {cursor:grabbing;}
