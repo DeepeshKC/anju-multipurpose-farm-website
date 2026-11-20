@@ -1377,6 +1377,27 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
     articleSearch?.addEventListener('input', filterArticleCards);
     articleFilter?.addEventListener('change', filterArticleCards);
 
+    async function loadTrash(){
+      const list=document.getElementById('cms-trash-list');const message=document.getElementById('cms-trash-status');
+      if(!list)return;
+      try{const response=await fetch('/api/admin/cms/trash',{credentials:'same-origin'});const data=await response.json();if(!response.ok)throw Error(data.error||'Unable to load trash');
+        list.replaceChildren();message.textContent='';
+        if(!data.articles?.length){const li=document.createElement('li');li.textContent='Trash is empty.';list.append(li);return;}
+        for(const article of data.articles){const li=document.createElement('li');
+          const heading=document.createElement('strong');heading.textContent=`${article.title} — /${article.slug}`;
+          const buttons=document.createElement('div');buttons.className='cms-card-actions';
+          for(const [label,method] of [['Restore','PATCH'],['Delete permanently','DELETE']]){
+            const button=document.createElement('button');button.type='button';button.textContent=label;if(method==='DELETE')button.className='cms-danger';
+            button.addEventListener('click',async()=>{
+              if(!confirm(method==='DELETE'?`PERMANENTLY delete "${article.title}" and both translations? This cannot be undone.`:`Restore "${article.title}"?`))return;
+              button.disabled=true;try{const r=await fetch(`/api/admin/cms/trash/${article.id}`,{method,credentials:'same-origin'});const result=await r.json();if(!r.ok)throw Error(result.error||'Request failed');await loadTrash();await loadArticles();}catch(e){message.textContent=e.message;button.disabled=false;}
+            });buttons.append(button);
+          }li.append(heading,buttons);list.append(li);
+        }
+      }catch(e){message.textContent=e.message;}
+    }
+    document.getElementById('cms-trash-refresh')?.addEventListener('click',loadTrash);
+    loadTrash();
     async function loadArticles() {
       try {
         const data = await getJSON('/api/admin/cms/articles');
@@ -1622,6 +1643,16 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             if (/^Publish/.test(button.textContent)) button.classList.add('cms-publish-action');
             actions.appendChild(button);
           }
+          const trashButton=document.createElement('button');
+          trashButton.type='button';trashButton.textContent='Move to Trash';trashButton.className='cms-danger';
+          trashButton.addEventListener('click',async()=>{
+            if(!confirm(`Move "${title}" (English and Nepali) to Trash? It will disappear from the public blog.`))return;
+            trashButton.disabled=true;
+            try{const response=await fetch(`/api/admin/cms/trash/${article.id}`,{method:'POST',credentials:'same-origin'});
+              const data=await response.json();if(!response.ok)throw Error(data.error||'Trash request failed');
+              await loadArticles();await loadTrash();
+            }catch(error){alert(error.message);trashButton.disabled=false;}
+          });actions.appendChild(trashButton);
           item.replaceChildren(top, publicationMeta);
           for (const extra of otherLabels) {extra.classList.add('cms-card-extra'); item.appendChild(extra);}
           item.appendChild(actions);
