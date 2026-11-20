@@ -445,10 +445,16 @@
             <label for="cms-media-alt-ne">Nepali alt text</label><input id="cms-media-alt-ne" maxlength="500" placeholder="नेपालीमा वर्णन">
             <label for="cms-media-caption-en">English caption</label><input id="cms-media-caption-en" maxlength="500" placeholder="Optional caption">
             <label for="cms-media-caption-ne">Nepali caption</label><input id="cms-media-caption-ne" maxlength="500" placeholder="वैकल्पिक क्याप्सन">
-            <div class="farm-media-actions"><button type="button" id="cms-media-upload" hidden>Upload photograph</button><button type="button" id="cms-media-save" hidden>Save details</button><button type="button" id="cms-media-delete" hidden class="farm-media-secondary">Delete photograph</button><button type="button" id="cms-media-insert" hidden>Use in editor</button></div>
+            <div class="farm-media-actions"><button type="button" id="cms-media-upload" hidden>Upload photograph</button><button type="button" id="cms-media-save" hidden>Save details</button><button type="button" id="cms-media-delete" hidden class="farm-media-secondary">Move to Trash</button><button type="button" id="cms-media-insert" hidden>Use in editor</button></div>
             <p id="cms-media-status" role="status" aria-live="polite"></p><div id="cms-media-result"></div>
           </aside>
         </div>
+      </section>
+      <section id="cms-media-trash-panel" class="farm-media" aria-labelledby="cms-media-trash-heading">
+        <div class="farm-media-head"><div><p class="farm-media-eyebrow">RECOVERY</p><h3 id="cms-media-trash-heading">Photograph Trash</h3><p>Restore photographs at any time. Permanent deletion is available after 30 days and only when no article or revision references the image.</p></div><button id="cms-media-trash-refresh" type="button" class="farm-media-secondary">Refresh Photograph Trash</button></div>
+        <div id="cms-media-trash-gallery" class="farm-media-gallery"></div>
+        <button id="cms-media-trash-more" type="button" class="farm-media-secondary" hidden>Load more</button>
+        <p id="cms-media-trash-status" role="status" aria-live="polite"></p>
       </section>
       <section id="cms-trash-panel" class="cms-trash-panel"><h3>Article Trash</h3><p class="admin-note">Restore articles or permanently delete them. Moving to Trash hides articles from the public blog.</p><button id="cms-trash-refresh" type="button">Refresh Trash</button><ul id="cms-trash-list" class="cms-article-cards"></ul><p id="cms-trash-status" role="status"></p></section>
       <!-- English draft form -->
