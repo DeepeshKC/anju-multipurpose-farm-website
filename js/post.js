@@ -88,7 +88,19 @@ function sanitizeArticleHTML(html) {
       // Keep only safe Cloudinary image URLs and accessibility metadata.
       const src = child.tagName === 'IMG' ? child.getAttribute('src') : null;
       const alt = child.tagName === 'IMG' ? child.getAttribute('alt') : null;
+      const figureData = child.tagName === 'FIGURE' ? {
+        classes: (child.getAttribute('class') || '').split(/\s+/).filter(x => /^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right)|wrap-(?:none|left|right))$/.test(x)),
+        widthPct: Number(child.dataset.widthPct || 100), crop: Number(child.dataset.crop || 100),
+        cropX: Number(child.dataset.cropX || 50), cropY: Number(child.dataset.cropY || 50)
+      } : null;
       for (const attribute of [...child.attributes]) child.removeAttribute(attribute.name);
+      if (figureData) {
+        child.className = figureData.classes.join(' ');
+        for (const [key,min,max] of [['widthPct',15,100],['crop',25,100],['cropX',0,100],['cropY',0,100]]) {
+          const val = figureData[key];
+          if (Number.isInteger(val) && val >= min && val <= max) child.style.setProperty({widthPct:'--farm-width',crop:'--farm-crop',cropX:'--farm-crop-x',cropY:'--farm-crop-y'}[key], `${val}%`);
+        }
+      }
       if (child.tagName === 'IMG') {
         if (!src || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src)) {
           child.remove(); continue;

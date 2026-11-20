@@ -1,16 +1,78 @@
 
 import { Editor, StarterKit, Node } from './tiptap-bundle.js';
 
+// Word-style image node: interactive NodeView, persisted in article JSON.
 const FarmImage = Node.create({
-  name: 'farmImage', group: 'block', atom: true, selectable: true,
+  name: 'farmImage', group: 'block', atom: true, selectable: true, draggable: true,
   addAttributes() { return {
-    src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null }, size: { default: 'large' }, align: { default: 'center' }
+    src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null },
+    size: { default: 'large' }, align: { default: 'center' }, widthPct: { default: 100 },
+    wrap: { default: 'none' }, crop: { default: 100 }, cropX: { default: 50 }, cropY: { default: 50 }
   }; },
-  parseHTML() { return [{ tag: 'figure[data-farm-image]' }]; },
-  renderHTML({ HTMLAttributes: a }) { return ['figure', { 'data-farm-image': '', class: `farm-inline-image farm-size-${a.size || 'large'} farm-align-${a.align || 'center'}` },
-    ['img', { src: a.src, alt: a.alt, loading: 'lazy' }],
-    ['figcaption', {}, a.caption || '']
-  ]; }
+  parseHTML() { return [{ tag: 'figure[data-farm-image]', getAttrs: el => ({
+    src: el.querySelector('img')?.getAttribute('src'), alt: el.querySelector('img')?.getAttribute('alt') || '',
+    caption: el.querySelector('figcaption')?.textContent || '', mediaId: Number(el.dataset.mediaId) || null,
+    size: el.dataset.size || 'large', align: el.dataset.align || 'center',
+    widthPct: Number(el.dataset.widthPct) || 100, wrap: el.dataset.wrap || 'none',
+    crop: Number(el.dataset.crop) || 100, cropX: Number(el.dataset.cropX) || 50,
+    cropY: Number(el.dataset.cropY) || 50
+  }) }]; },
+  renderHTML({ HTMLAttributes: a }) { return ['figure', {
+    'data-farm-image': '', 'data-media-id': a.mediaId, 'data-size': a.size, 'data-align': a.align,
+    'data-width-pct': a.widthPct, 'data-wrap': a.wrap, 'data-crop': a.crop,
+    'data-crop-x': a.cropX, 'data-crop-y': a.cropY,
+    class: `farm-inline-image farm-size-${a.size} farm-align-${a.align} farm-wrap-${a.wrap}`,
+    style: `--farm-width:${a.widthPct}%;--farm-crop:${a.crop}%;--farm-crop-x:${a.cropX}%;--farm-crop-y:${a.cropY}%`
+  }, ['div', { class: 'farm-image-window' }, ['img', { src: a.src, alt: a.alt, loading: 'lazy' }]],
+    ['figcaption', {}, a.caption || '']]; },
+  addNodeView() { return ({ node, getPos, editor }) => {
+    let current = node;
+    const figure = document.createElement('figure');
+    figure.dataset.farmImage = '';
+    figure.className = 'farm-inline-image farm-editable-image';
+    figure.draggable = true;
+    const windowEl = document.createElement('div'); windowEl.className = 'farm-image-window';
+    const img = document.createElement('img'); img.draggable = false;
+    const caption = document.createElement('figcaption');
+    const grip = document.createElement('span'); grip.className = 'farm-resize-grip';
+    grip.title = 'Drag to resize image'; grip.contentEditable = 'false';
+    windowEl.append(img, grip); figure.append(windowEl, caption);
+    const updateDisplay = () => {
+      const a = current.attrs;
+      figure.className = `farm-inline-image farm-editable-image farm-size-${a.size} farm-align-${a.align} farm-wrap-${a.wrap}`;
+      figure.style.setProperty('--farm-width', `${a.widthPct}%`);
+      figure.style.setProperty('--farm-crop', `${a.crop}%`);
+      figure.style.setProperty('--farm-crop-x', `${a.cropX}%`);
+      figure.style.setProperty('--farm-crop-y', `${a.cropY}%`);
+      img.src = a.src; img.alt = a.alt || ''; caption.textContent = a.caption || '';
+    };
+    updateDisplay();
+    grip.addEventListener('pointerdown', event => {
+      if (event.button !== 0) return;
+      event.preventDefault(); event.stopPropagation();
+      const pos = getPos(); if (typeof pos !== 'number') return;
+      editor.commands.setNodeSelection(pos);
+      const startX = event.clientX, start = Number(current.attrs.widthPct) || 100;
+      const containerWidth = editor.view.dom.clientWidth || 700;
+      grip.setPointerCapture(event.pointerId);
+      const move = e => { const width = Math.max(15, Math.min(100, start + (e.clientX-startX)*100/containerWidth));
+        figure.style.setProperty('--farm-width', `${Math.round(width)}%`); };
+      const end = e => {
+        grip.removeEventListener('pointermove', move); grip.removeEventListener('pointerup', end);
+        grip.removeEventListener('pointercancel', end);
+        const width = Math.round(Math.max(15, Math.min(100, start + (e.clientX-startX)*100/containerWidth)));
+        const at = getPos(); if (typeof at === 'number') editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, {...current.attrs, widthPct: width}));
+      };
+      grip.addEventListener('pointermove', move); grip.addEventListener('pointerup', end);
+      grip.addEventListener('pointercancel', end);
+    });
+    return { dom: figure, update(next) { if (next.type !== current.type) return false; current = next; updateDisplay(); return true; },
+      selectNode() { figure.classList.add('ProseMirror-selectednode'); },
+      deselectNode() { figure.classList.remove('ProseMirror-selectednode'); },
+      stopEvent(e) { return e.target === grip || grip.contains(e.target); },
+      ignoreMutation() { return true; }
+    };
+  }; }
 });
 
 const section = document.getElementById('cms-section');
@@ -85,6 +147,12 @@ updateWordCount();
       <p role="status" aria-live="polite" data-status></p>
       <div class="cms-image-gallery" data-gallery></div>
       <label>Image size <select data-size><option value="small">Small</option><option value="medium">Medium</option><option value="large" selected>Large</option><option value="full">Full width</option></select></label>
+      <label>Text wrapping <select data-wrap><option value="none">In line with text</option><option value="left">Wrap text on right</option><option value="right">Wrap text on left</option></select></label>
+      <label>Width <input type="range" data-width min="15" max="100" value="100"> <output data-width-label>100%</output></label>
+      <fieldset class="farm-crop-controls"><legend>Crop (non-destructive)</legend>
+      <label>Visible height <input type="range" data-crop min="25" max="100" value="100"></label>
+      <label>Horizontal focus <input type="range" data-crop-x min="0" max="100" value="50"></label>
+      <label>Vertical focus <input type="range" data-crop-y min="0" max="100" value="50"></label></fieldset>
       <label>Alignment <select data-align><option value="left">Left</option><option value="center" selected>Center</option><option value="right">Right</option></select></label>
       <label>Alt text <input type="text" maxlength="500" data-alt></label>
       <label>Caption <input type="text" maxlength="500" data-caption></label>
@@ -132,6 +200,12 @@ updateWordCount();
       chosenMedia=null;
       $image('size').value=node?.attrs?.size||'large';
       $image('align').value=node?.attrs?.align||'center';
+    $image('wrap').value=node?.attrs?.wrap||'none';
+    $image('width').value=node?.attrs?.widthPct??100;
+    $image('crop').value=node?.attrs?.crop??100;
+    $image('crop-x').value=node?.attrs?.cropX??50;
+    $image('crop-y').value=node?.attrs?.cropY??50;
+    $image('width-label').textContent=`${$image('width').value}%`;
       $image('alt').value=node?.attrs?.alt||'';
       $image('caption').value=node?.attrs?.caption||'';
       $image('remove').hidden=!node;
@@ -143,6 +217,7 @@ updateWordCount();
       } catch(error) {imageStatus(error.message);}
     }
     controls.splice(8,0,['Insert / edit image',openImageDialog]);
+    $image('width').addEventListener('input',()=>{$image('width-label').textContent=`${$image('width').value}%`;});
     $image('close').addEventListener('click',()=>mediaDialog.close());
     $image('upload').addEventListener('click',async()=>{
       const file=$image('file').files?.[0];
@@ -172,7 +247,9 @@ updateWordCount();
       if(!chosenMedia){imageStatus('Select or upload a photograph first.');return;}
       const attrs={src:chosenMedia.secure_url,mediaId:chosenMedia.id,
         alt:$image('alt').value.trim(),caption:$image('caption').value.trim(),
-        size:$image('size').value,align:$image('align').value};
+        size:$image('size').value,align:$image('align').value,
+        widthPct:Number($image('width').value),wrap:$image('wrap').value,
+        crop:Number($image('crop').value),cropX:Number($image('crop-x').value),cropY:Number($image('crop-y').value)};
       if(imageEditPosition!==null && editor.state.doc.nodeAt(imageEditPosition)?.type?.name==='farmImage'){
         const tr=editor.state.tr.setNodeMarkup(imageEditPosition,undefined,attrs);
         editor.view.dispatch(tr);
@@ -324,7 +401,14 @@ updateWordCount();
           destination.setAttribute('alt', node.getAttribute('alt') || '');
           destination.setAttribute('loading', 'lazy');
         }
-        if (node.tagName === 'FIGURE') { const classes=(node.getAttribute('class')||'').split(/\s+/).filter(c=>/^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right))$/.test(c)); destination.setAttribute('class',classes.join(' ')); }
+        if (node.tagName === 'FIGURE') {
+          for (const key of ['widthPct','crop','cropX','cropY']) {
+            const val=Number(node.dataset[key]);
+            if(Number.isFinite(val)) destination.style.setProperty({'widthPct':'--farm-width','crop':'--farm-crop','cropX':'--farm-crop-x','cropY':'--farm-crop-y'}[key],`${val}%`);
+          }
+          const wrap=node.dataset.wrap;
+          if(['none','left','right'].includes(wrap)) destination.classList.add(`farm-wrap-${wrap}`);
+          const classes=(node.getAttribute('class')||'').split(/\s+/).filter(c=>/^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right))$/.test(c)); destination.classList.add(...classes); }
         for (const child of node.childNodes) destination.appendChild(copyNode(child));
         return destination;
       }
@@ -356,6 +440,7 @@ main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12p
 h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}
 .article{margin-top:32px}.article h2,.article h3,.article h4{line-height:1.3;margin-top:1.8em}.article blockquote{border-left:4px solid #9b7453;padding-left:18px;margin-left:0;color:#555}
 .article p{margin:1em 0}.article li{margin:.3em 0}
+.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
 </style></head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
 <main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
 <div class="article">${content}</div></main></body></html>`;
