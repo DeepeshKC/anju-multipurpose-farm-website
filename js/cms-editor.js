@@ -56,13 +56,18 @@ const FarmImage = Node.create({
       figure.style.setProperty('--farm-crop-x', `${a.cropX}%`);
       figure.style.setProperty('--farm-crop-y', `${a.cropY}%`);
       figure.style.setProperty('--farm-rotation', `${a.rotation || 0}deg`);
-      img.src = a.src; img.alt = a.alt || ''; caption.textContent = a.caption || '';
+      if (img.getAttribute('src') !== (a.src || '')) img.src = a.src || '';
+      if (img.alt !== (a.alt || '')) img.alt = a.alt || '';
+      if (caption.textContent !== (a.caption || '')) caption.textContent = a.caption || '';
     };
     updateDisplay();
     const updateAttributes = changes => {
       const pos = getPos();
       if (typeof pos !== 'number') return;
       editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, {...current.attrs, ...changes}));
+      // Attribute changes can clear ProseMirror's node selection. Restore it so
+      // resize handles remain visible for repeated adjustments.
+      editor.commands.setNodeSelection(pos);
     };
     for (const handle of handles) {
       handle.addEventListener('pointerdown', event => {
@@ -75,6 +80,10 @@ const FarmImage = Node.create({
         const bounds = windowEl.getBoundingClientRect();
         const ratio = bounds.width / Math.max(1, bounds.height);
         const initialHeight = bounds.height;
+        // Keep the image selected before and throughout the resize gesture.
+        const selectedPos = getPos();
+        if (typeof selectedPos === 'number') editor.commands.setNodeSelection(selectedPos);
+        figure.classList.add('ProseMirror-selectednode');
         handle.setPointerCapture(event.pointerId);
         let lastWidth = initial;
         const onMove = e => {
@@ -89,14 +98,22 @@ const FarmImage = Node.create({
           handle.removeEventListener('pointermove', onMove);
           handle.removeEventListener('pointerup', finish);
           handle.removeEventListener('pointercancel', finish);
+          if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
           if (e.type === 'pointercancel') { updateDisplay(); return; }
-          updateAttributes({widthPct: lastWidth});
+          if (lastWidth !== initial) updateAttributes({widthPct: lastWidth});
+          else if (typeof getPos() === 'number') editor.commands.setNodeSelection(getPos());
         };
         handle.addEventListener('pointermove', onMove);
         handle.addEventListener('pointerup', finish);
         handle.addEventListener('pointercancel', finish);
       });
     }
+    // Clicking an already-selected image should not require deselecting first.
+    windowEl.addEventListener('pointerdown', e => {
+      if (e.target !== img && e.target !== windowEl) return;
+      const pos = getPos();
+      if (typeof pos === 'number') editor.commands.setNodeSelection(pos);
+    });
     rotate.addEventListener('click', e => {
       e.preventDefault(); e.stopPropagation();
       updateAttributes({rotation: ((Number(current.attrs.rotation)||0)+90)%360});
