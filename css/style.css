@@ -1050,17 +1050,23 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--yellow);outline-off
 .farm-crop-controls input {width:100%;}
 @media(max-width:650px){.farm-wrap-left,.farm-wrap-right{float:none;max-width:100%;margin:1rem auto!important;}}
 
-/* Direct-manipulation image controls (staging CMS only). */
-#cms-rich-editor .farm-editable-image {position:relative;cursor:default;overflow:visible;}
-#cms-rich-editor .farm-editable-image .farm-image-window {overflow:visible;position:relative;}
-#cms-rich-editor .farm-image-quick-actions {display:none;position:absolute;top:-38px;left:0;z-index:12;gap:6px;}
-#cms-rich-editor .farm-editable-image.ProseMirror-selectednode .farm-image-quick-actions,
-#cms-rich-editor .farm-editable-image:focus-within .farm-image-quick-actions {display:flex;}
-#cms-rich-editor .farm-image-quick-actions button {font:12px/1.3 Arial,sans-serif;padding:5px 9px;background:#fff;border:1px solid #7045c5;border-radius:4px;color:#252525;cursor:pointer;}
-#cms-rich-editor .farm-image-move {cursor:grab!important;}
-#cms-rich-editor .farm-image-handle {display:none;position:absolute;width:14px;height:14px;border:2px solid #7045c5;background:#fff;z-index:11;touch-action:none;cursor:nwse-resize;box-shadow:0 1px 4px #0003;}
-#cms-rich-editor .farm-editable-image.ProseMirror-selectednode .farm-image-handle {display:block;}
-#cms-rich-editor .farm-image-handle-nw {left:-7px;top:-7px;}
-#cms-rich-editor .farm-image-handle-ne {right:-7px;top:-7px;cursor:nesw-resize;}
-#cms-rich-editor .farm-image-handle-sw {left:-7px;bottom:-7px;cursor:nesw-resize;}
-#cms-rich-editor .farm-image-handle-se {right:-7px;bottom:-7px;}
+/* Integrated CMS editor: direct selection and eight resize grips */
+#cms-rich-editor figure.farm-editable-image { position:relative; overflow:visible; }
+#cms-rich-editor figure.farm-editable-image .farm-image-window {position:relative; overflow:visible;}
+#cms-rich-editor figure.farm-editable-image img {transform:rotate(var(--farm-rotation,0deg)); transform-origin:center;}
+#cms-rich-editor figure.farm-editable-image.ProseMirror-selectednode .farm-image-window {outline:2px solid #3278b6;outline-offset:2px;}
+#cms-rich-editor .farm-handle {display:none;position:absolute;z-index:9;width:13px;height:13px;background:white;border:2px solid #3278b6;border-radius:2px;touch-action:none;}
+#cms-rich-editor .ProseMirror-selectednode .farm-handle {display:block;}
+#cms-rich-editor .farm-handle-nw{top:-7px;left:-7px;cursor:nwse-resize}
+#cms-rich-editor .farm-handle-n{top:-7px;left:calc(50% - 7px);cursor:ns-resize}
+#cms-rich-editor .farm-handle-ne{top:-7px;right:-7px;cursor:nesw-resize}
+#cms-rich-editor .farm-handle-e{top:calc(50% - 7px);right:-7px;cursor:ew-resize}
+#cms-rich-editor .farm-handle-se{bottom:-7px;right:-7px;cursor:nwse-resize}
+#cms-rich-editor .farm-handle-s{bottom:-7px;left:calc(50% - 7px);cursor:ns-resize}
+#cms-rich-editor .farm-handle-sw{bottom:-7px;left:-7px;cursor:nesw-resize}
+#cms-rich-editor .farm-handle-w{top:calc(50% - 7px);left:-7px;cursor:ew-resize}
+#cms-rich-editor .farm-rotate-button {display:none;position:absolute;top:-38px;right:0;border:1px solid #3278b6;background:white;color:#164c73;padding:4px 8px;border-radius:5px;cursor:pointer;z-index:10}
+#cms-rich-editor .ProseMirror-selectednode .farm-rotate-button {display:block}
+#cms-rich-editor .farm-drag-label {display:none;font:12px Arial,sans-serif;color:#275c87;cursor:grab;user-select:none}
+#cms-rich-editor .ProseMirror-selectednode .farm-drag-label {display:block}
+#cms-toolbar {display:flex;flex-wrap:wrap;gap:5px;position:sticky;top:0;z-index:15;background:#f8f7f2;padding:8px;border-bottom:1px solid #ddd}
