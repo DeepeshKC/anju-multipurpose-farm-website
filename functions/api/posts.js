@@ -68,6 +68,7 @@ export async function onRequestGet({ env, request }) {
         AND nr.translation_id = ne.id
 
       WHERE en.published_english_revision_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM article_trash t WHERE t.post_id = p.id)
 
       UNION ALL
 
@@ -83,6 +84,7 @@ export async function onRequestGet({ env, request }) {
       FROM posts p
 
       WHERE p.status = 'published'
+        AND NOT EXISTS (SELECT 1 FROM article_trash t WHERE t.post_id = p.id)
         AND NOT EXISTS (
           SELECT 1
           FROM post_translations en2
