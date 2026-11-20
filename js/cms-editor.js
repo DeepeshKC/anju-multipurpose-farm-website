@@ -1,6 +1,18 @@
 
 import { Editor, StarterKit, Node } from './tiptap-bundle.js';
 
+// Web-document paragraph layout attributes persist in TipTap JSON.
+const ArticleLayout = Node.create({
+  name: 'articleLayout',
+  addGlobalAttributes() {
+    return [{ types: ['paragraph', 'heading'], attributes: {
+      textAlign: { default: 'left', parseHTML: el => ['left','center','right','justify'].includes(el.style.textAlign) ? el.style.textAlign : 'left', renderHTML: a => ({style: `text-align:${a.textAlign || 'left'}`}) },
+      lineHeight: { default: '1.65', parseHTML: el => ['1.2','1.4','1.65','2'].includes(el.style.lineHeight) ? el.style.lineHeight : '1.65', renderHTML: a => ({style: `line-height:${a.lineHeight || '1.65'}`}) },
+      indent: { default: 0, parseHTML: el => Math.min(4,Math.max(0,parseInt(el.dataset.indent || '0',10)||0)), renderHTML: a => ({'data-indent': String(a.indent || 0), style: `margin-left:${(a.indent || 0)*1.5}rem`}) }
+    }}];
+  }
+});
+
 // Word-style image node: interactive NodeView, persisted in article JSON.
 const FarmImage = Node.create({
   name: 'farmImage', group: 'block', atom: true, selectable: true, draggable: true,
@@ -153,6 +165,7 @@ if (!section || !mount || !toolbar || !form ||
       element: mount,
       extensions: [
         FarmImage,
+        ArticleLayout,
         StarterKit.configure({
           heading: { levels: [2, 3, 4] },
           link: false,
@@ -198,6 +211,59 @@ updateWordCount();
   ['Undo', () => editor.chain().focus().undo().run()],
   ['Redo', () => editor.chain().focus().redo().run()]
 ];
+
+    // Additional Word-like controls share the SAME article editor and save path.
+    // Never overwrite the image NodeView or the existing publishing workflow.
+    const ribbon = document.createElement('div');
+    ribbon.className = 'cms-word-ribbon';
+    ribbon.setAttribute('aria-label', 'Document layout tools');
+    const ribbonTitle = document.createElement('strong');
+    ribbonTitle.textContent = 'Layout & editing';
+    ribbon.appendChild(ribbonTitle);
+    function ribbonButton(label, fn, title=label) {
+      const b=document.createElement('button'); b.type='button'; b.textContent=label; b.title=title;
+      b.addEventListener('mousedown',e=>e.preventDefault());
+      b.addEventListener('click',fn); ribbon.appendChild(b); return b;
+    }
+    function setBlockLayout(key,value) {
+      const {from,$from} = editor.state.selection;
+      let depth=$from.depth;
+      while(depth>0 && !['paragraph','heading'].includes($from.node(depth).type.name)) depth--;
+      if(depth===0) return;
+      const block=$from.node(depth), pos=$from.before(depth);
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos,undefined,{...block.attrs,[key]:value}));
+      editor.commands.focus();
+    }
+    for (const [label,align] of [['Left','left'],['Center','center'],['Right','right'],['Justify','justify']])
+      ribbonButton(label,()=>setBlockLayout('textAlign',align),`Align ${align}`);
+    const spacing=document.createElement('select');
+    spacing.setAttribute('aria-label','Line spacing');
+    spacing.innerHTML='<option value="1.2">1.2 spacing</option><option value="1.4">1.4 spacing</option><option value="1.65" selected>1.65 spacing</option><option value="2">Double spacing</option>';
+    spacing.addEventListener('change',()=>setBlockLayout('lineHeight',spacing.value)); ribbon.appendChild(spacing);
+    ribbonButton('Indent +',()=>{const a=editor.getAttributes('paragraph');setBlockLayout('indent',Math.min(4,(a.indent||0)+1));});
+    ribbonButton('Indent −',()=>{const a=editor.getAttributes('paragraph');setBlockLayout('indent',Math.max(0,(a.indent||0)-1));});
+    const findInput=document.createElement('input'); findInput.type='search'; findInput.placeholder='Find in article';
+    findInput.setAttribute('aria-label','Find text'); findInput.className='cms-find-input'; ribbon.appendChild(findInput);
+    let lastFind=-1;
+    function findNext() {
+      const term=findInput.value; if(!term)return;
+      const text=editor.state.doc.textBetween(0,editor.state.doc.content.size,'\n','\n');
+      const offset=text.toLocaleLowerCase().indexOf(term.toLocaleLowerCase(),lastFind+1);
+      if(offset<0){lastFind=-1;return;}
+      // Map text offset to document positions (accounts for node boundaries).
+      let seen=0, match=null;
+      editor.state.doc.descendants((node,pos)=>{if(match!==null)return false;
+        if(node.isText){const len=node.text.length;if(seen+len>offset){match=pos+offset-seen;return false;}seen+=len;}
+        else if(node.isBlock && pos>0) seen+=1;
+      });
+      if(match!==null){editor.commands.setTextSelection({from:match,to:match+term.length});editor.commands.focus();lastFind=offset;}
+    }
+    ribbonButton('Find next',findNext);
+    findInput.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();findNext();}});
+    const zoom=document.createElement('select');zoom.setAttribute('aria-label','Editor zoom');
+    zoom.innerHTML='<option value="0.85">85% zoom</option><option value="1" selected>100% zoom</option><option value="1.15">115% zoom</option><option value="1.3">130% zoom</option>';
+    zoom.addEventListener('change',()=>mount.style.setProperty('--cms-editor-zoom',zoom.value));ribbon.appendChild(zoom);
+    toolbar.after(ribbon);
 
     // Keep image selection within the article workflow; no numeric IDs needed.
     const mediaDialog = document.createElement('dialog');
@@ -458,6 +524,14 @@ updateWordCount();
         const fragment = document.createDocumentFragment();
         const destination = allowed.has(node.tagName)
           ? document.createElement(node.tagName.toLowerCase()) : fragment;
+        if (['P','H2','H3','H4'].includes(node.tagName)) {
+          const align=node.style.textAlign;
+          if(['left','center','right','justify'].includes(align)) destination.style.textAlign=align;
+          const line=node.style.lineHeight;
+          if(['1.2','1.4','1.65','2'].includes(line)) destination.style.lineHeight=line;
+          const indent=Math.min(4,Math.max(0,parseInt(node.dataset.indent||'0',10)||0));
+          if(indent) destination.style.marginLeft=`${indent*1.5}rem`;
+        }
         if (node.tagName === 'IMG') {
           const src = node.getAttribute('src') || '';
           if (!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(src)) return fragment;
