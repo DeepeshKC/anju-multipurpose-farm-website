@@ -50,7 +50,11 @@ const FarmImage = Node.create({
     windowEl.append(img, ...handles, rotate); figure.append(move, windowEl, caption);
     const updateDisplay = () => {
       const a = current.attrs;
+      // Preserve ProseMirror's selection class when updating image attributes.
+      // Replacing className here previously hid resize handles after each resize.
+      const selected = figure.classList.contains('ProseMirror-selectednode') || figure.dataset.selected === 'true';
       figure.className = `farm-inline-image farm-editable-image farm-size-${a.size} farm-align-${a.align} farm-wrap-${a.wrap}`;
+      if (selected) figure.classList.add('ProseMirror-selectednode');
       figure.style.setProperty('--farm-width', `${a.widthPct}%`);
       figure.style.setProperty('--farm-crop', `${a.crop}%`);
       figure.style.setProperty('--farm-crop-x', `${a.cropX}%`);
@@ -79,7 +83,6 @@ const FarmImage = Node.create({
         const editorWidth = editor.view.dom.clientWidth || 700;
         const bounds = windowEl.getBoundingClientRect();
         const ratio = bounds.width / Math.max(1, bounds.height);
-        const initialHeight = bounds.height;
         // Keep the image selected before and throughout the resize gesture.
         const selectedPos = getPos();
         if (typeof selectedPos === 'number') editor.commands.setNodeSelection(selectedPos);
@@ -100,7 +103,11 @@ const FarmImage = Node.create({
           handle.removeEventListener('pointercancel', finish);
           if (handle.hasPointerCapture(e.pointerId)) handle.releasePointerCapture(e.pointerId);
           if (e.type === 'pointercancel') { updateDisplay(); return; }
-          if (lastWidth !== initial) updateAttributes({widthPct: lastWidth});
+          if (lastWidth !== initial) {
+            updateAttributes({widthPct: lastWidth});
+            figure.dataset.selected = 'true';
+            figure.classList.add('ProseMirror-selectednode');
+          }
           else if (typeof getPos() === 'number') editor.commands.setNodeSelection(getPos());
         };
         handle.addEventListener('pointermove', onMove);
@@ -119,8 +126,8 @@ const FarmImage = Node.create({
       updateAttributes({rotation: ((Number(current.attrs.rotation)||0)+90)%360});
     });
     return { dom: figure, update(next) { if (next.type !== current.type) return false; current = next; updateDisplay(); return true; },
-      selectNode() { figure.classList.add('ProseMirror-selectednode'); },
-      deselectNode() { figure.classList.remove('ProseMirror-selectednode'); },
+      selectNode() { figure.dataset.selected = 'true'; figure.classList.add('ProseMirror-selectednode'); },
+      deselectNode() { delete figure.dataset.selected; figure.classList.remove('ProseMirror-selectednode'); },
       stopEvent(e) { return handles.some(h => h === e.target) || e.target === rotate; },
       ignoreMutation() { return true; }
     };
