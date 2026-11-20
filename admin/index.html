@@ -202,6 +202,7 @@
   <script defer src="../js/admin.js"></script>
   <script defer src="../js/admin-finish.js"></script>
   <script type="module" src="../js/cms-editor.js"></script>
+  <link rel="stylesheet" href="../css/cms-media.css">
   <script type="module" src="../js/cms-media.js"></script>
 </head>
 
@@ -427,18 +428,26 @@
         class="admin-list cms-article-cards"
       ></ul>
 
-      <section id="cms-media-panel" aria-label="Cloudinary media uploads" style="margin:24px 0;padding:20px;border:1px solid #ccc;border-radius:8px">
-        <h3>Media library</h3>
-        <p class="admin-note">Upload photos for articles. After uploading, insert them into your article using the editor.</p>
-        <label for="cms-media-file">Image (JPEG, PNG, WebP, AVIF; maximum 10 MB)</label>
-        <input id="cms-media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
-        <label for="cms-media-alt-en">English alt text</label><input id="cms-media-alt-en" maxlength="500">
-        <label for="cms-media-alt-ne">Nepali alt text</label><input id="cms-media-alt-ne" maxlength="500">
-        <label for="cms-media-caption-en">English caption</label><input id="cms-media-caption-en" maxlength="500">
-        <label for="cms-media-caption-ne">Nepali caption</label><input id="cms-media-caption-ne" maxlength="500">
-        <button type="button" id="cms-media-upload">Upload image</button>
-        <p id="cms-media-status" role="status" aria-live="polite"></p>
-        <div id="cms-media-result"></div>
+      <section id="cms-media-panel" class="farm-media" aria-labelledby="farm-media-heading">
+        <div class="farm-media-head"><div><p class="farm-media-eyebrow">ASSET MANAGEMENT</p><h3 id="farm-media-heading">Media library</h3><p>Manage photographs for English and Nepali articles.</p></div><button type="button" id="cms-media-refresh" class="farm-media-secondary">Refresh library</button></div>
+        <div class="farm-media-layout">
+          <div class="farm-media-main">
+            <div id="cms-media-drop" class="farm-media-drop" tabindex="0" role="button" aria-label="Choose or drop a photo"><span class="farm-media-drop-icon" aria-hidden="true">＋</span><strong>Drop a photograph here or browse files</strong><span>JPEG, PNG, WebP, AVIF · Up to 10 MB</span><input id="cms-media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif" aria-label="Choose image" /></div>
+            <div id="cms-media-preview" class="farm-media-upload-preview" hidden></div>
+            <div class="farm-media-toolbar"><label class="farm-media-search-label" for="cms-media-search">Search photographs<input id="cms-media-search" type="search" placeholder="Search by alt text, caption or ID"></label><span id="cms-media-count" class="farm-media-count"></span></div>
+            <div id="cms-media-gallery" class="farm-media-gallery" aria-label="Uploaded photographs"></div>
+            <button type="button" id="cms-media-more" class="farm-media-secondary" hidden>Load more</button>
+          </div>
+          <aside class="farm-media-details" aria-label="Selected image details"><h4 id="cms-media-details-heading">Image details</h4><p class="farm-media-hint">Select an image from the gallery, or choose a new file to upload.</p><div id="cms-media-selected-preview"></div>
+            <p id="cms-media-meta" class="farm-media-meta"></p>
+            <label for="cms-media-alt-en">English alt text</label><input id="cms-media-alt-en" maxlength="500" placeholder="Describe the photograph">
+            <label for="cms-media-alt-ne">Nepali alt text</label><input id="cms-media-alt-ne" maxlength="500" placeholder="नेपालीमा वर्णन">
+            <label for="cms-media-caption-en">English caption</label><input id="cms-media-caption-en" maxlength="500" placeholder="Optional caption">
+            <label for="cms-media-caption-ne">Nepali caption</label><input id="cms-media-caption-ne" maxlength="500" placeholder="वैकल्पिक क्याप्सन">
+            <div class="farm-media-actions"><button type="button" id="cms-media-upload" hidden>Upload photograph</button><button type="button" id="cms-media-save" hidden>Save details</button><button type="button" id="cms-media-insert" hidden>Use in editor</button></div>
+            <p id="cms-media-status" role="status" aria-live="polite"></p><div id="cms-media-result"></div>
+          </aside>
+        </div>
       </section>
       <!-- English draft form -->
 
