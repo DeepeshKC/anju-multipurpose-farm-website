@@ -58,8 +58,22 @@ const FarmImage = Node.create({
     rotate.className='farm-rotate-button'; rotate.textContent='↻ Rotate 90°';
     rotate.title='Rotate image 90 degrees'; rotate.contentEditable='false';
     const move = document.createElement('span'); move.className='farm-drag-label';
-    move.textContent='⠿ Drag image to move'; move.contentEditable='false';
+    move.textContent='⠿ Drag to reposition'; move.contentEditable='false'; move.draggable=true;
     windowEl.append(img, ...handles, rotate); figure.append(move, windowEl, caption);
+    // Keep the native ProseMirror drag pipeline intact. Select the node before
+    // dragstart so its structured JSON, rather than a browser image URL, moves.
+    figure.addEventListener('dragstart', event => {
+      const pos = getPos();
+      if (typeof pos !== 'number') { event.preventDefault(); return; }
+      editor.commands.setNodeSelection(pos);
+      figure.classList.add('farm-is-dragging');
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+    });
+    figure.addEventListener('dragend', () => figure.classList.remove('farm-is-dragging'));
+    move.addEventListener('pointerdown', () => {
+      const pos = getPos();
+      if (typeof pos === 'number') editor.commands.setNodeSelection(pos);
+    });
     const updateDisplay = () => {
       const a = current.attrs;
       // Preserve ProseMirror's selection class when updating image attributes.
@@ -264,6 +278,7 @@ updateWordCount();
     zoom.innerHTML='<option value="0.85">85% zoom</option><option value="1" selected>100% zoom</option><option value="1.15">115% zoom</option><option value="1.3">130% zoom</option>';
     zoom.addEventListener('change',()=>mount.style.setProperty('--cms-editor-zoom',zoom.value));ribbon.appendChild(zoom);
     toolbar.after(ribbon);
+    ribbonTitle.remove();
 
     // One cohesive ribbon for the EXISTING editor (not a second editor).
     // Move the existing controls instead of cloning them: all commands retain
@@ -295,7 +310,10 @@ updateWordCount();
       });
       ribbonTabs[name]=tab;tabs.appendChild(tab);panels.appendChild(panel);
     }
-    workbench.append(tabs,panels);
+    const header = document.createElement('div');
+    header.className='cms-workbench-heading';
+    header.innerHTML='<div><strong>Article studio</strong><span>Write · Format · Publish</span></div><span class="cms-workbench-hint">Tip: drag the image by its top handle to move it between paragraphs</span>';
+    workbench.append(header,tabs,panels);
     toolbar.before(workbench);
     toolbar.classList.add('cms-ribbon-controls');
     homePanel.appendChild(toolbar);
@@ -310,6 +328,11 @@ updateWordCount();
     const viewInfo = document.createElement('span');
     viewInfo.className='cms-view-note';viewInfo.textContent='Zoom affects editing only, not the published article.';
     viewPanel.appendChild(viewInfo);
+    // Show actual editor status; the publishing workflow remains the existing one.
+    const editorStatus=document.createElement('span');
+    editorStatus.className='cms-editor-status';
+    editorStatus.textContent='Editing draft';
+    tabs.appendChild(editorStatus);
     const focusButton=document.createElement('button');focusButton.type='button';
     focusButton.textContent='Focus writing';
     focusButton.addEventListener('click',()=>{
