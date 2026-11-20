@@ -1360,6 +1360,23 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       }
     }
 
+    const articleSearch = document.getElementById('cms-article-search');
+    const articleFilter = document.getElementById('cms-article-filter');
+    function filterArticleCards() {
+      const q = (articleSearch?.value || '').trim().toLocaleLowerCase();
+      const filter = articleFilter?.value || 'all';
+      for (const card of articlesList.children) {
+        const matchesText = !q || (card.dataset.search || card.textContent.toLocaleLowerCase()).includes(q);
+        const matchesStatus = filter === 'all' ||
+          (filter === 'published' && card.dataset.published === 'true') ||
+          (filter === 'draft' && card.dataset.published !== 'true') ||
+          (filter === 'review' && card.dataset.review === 'true');
+        card.hidden = !(matchesText && matchesStatus);
+      }
+    }
+    articleSearch?.addEventListener('input', filterArticleCards);
+    articleFilter?.addEventListener('change', filterArticleCards);
+
     async function loadArticles() {
       try {
         const data = await getJSON('/api/admin/cms/articles');
@@ -1580,8 +1597,41 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             }
           }
 
+          // Present the existing workflow actions as a readable article card.
+          // Keep every original button and event handler intact.
+          const actionButtons = [...item.children].filter(child => child.tagName === 'BUTTON');
+          const historyPanels = [...item.children].filter(child => child.classList?.contains('cms-review-history'));
+          const otherLabels = [...item.children].filter(child => child.tagName === 'SPAN' && child !== label);
+          const top = document.createElement('div'); top.className = 'cms-card-top';
+          const identity = document.createElement('div');
+          const heading = document.createElement('strong'); heading.className = 'cms-card-title'; heading.textContent = title;
+          const slug = document.createElement('small'); slug.className = 'cms-card-slug'; slug.textContent = '/' + (article.slug || '');
+          identity.append(heading, slug);
+          const badges = document.createElement('div'); badges.className = 'cms-card-badges';
+          for (const [name, live] of [['English', englishPublished], ['Nepali', nepaliPublished]]) {
+            const badge = document.createElement('span'); badge.className = 'cms-card-badge' + (live ? ' is-live' : '');
+            badge.textContent = name + ': ' + (live ? 'Published' : 'Not published'); badges.appendChild(badge);
+          }
+          if (article.nepali_status === 'in_review') {
+            const badge = document.createElement('span'); badge.className = 'cms-card-badge is-review'; badge.textContent = 'Nepali review pending'; badges.appendChild(badge);
+          }
+          top.append(identity, badges);
+          const actions = document.createElement('div'); actions.className = 'cms-card-actions';
+          for (const button of actionButtons) {
+            if (/^Edit English$|^Edit Nepali$|^Add Nepali$/.test(button.textContent)) button.classList.add('cms-primary-action');
+            if (/^Publish/.test(button.textContent)) button.classList.add('cms-publish-action');
+            actions.appendChild(button);
+          }
+          item.replaceChildren(top, publicationMeta);
+          for (const extra of otherLabels) {extra.classList.add('cms-card-extra'); item.appendChild(extra);}
+          item.appendChild(actions);
+          for (const panel of historyPanels) actions.appendChild(panel);
+          item.dataset.search = (title + ' ' + (article.slug || '')).toLocaleLowerCase();
+          item.dataset.published = String(englishPublished || nepaliPublished);
+          item.dataset.review = String(article.nepali_status === 'in_review' || article.nepali_source_status === 'outdated');
           articlesList.appendChild(item);
         }
+        filterArticleCards();
       } catch (error) {
         console.error('CMS article listing failed:', error);
         showStatus(error.message, true);
