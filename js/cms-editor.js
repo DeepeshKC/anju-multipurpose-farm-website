@@ -88,7 +88,7 @@ updateWordCount();
       <label>Alignment <select data-align><option value="left">Left</option><option value="center" selected>Center</option><option value="right">Right</option></select></label>
       <label>Alt text <input type="text" maxlength="500" data-alt></label>
       <label>Caption <input type="text" maxlength="500" data-caption></label>
-      <div class="cms-image-dialog-actions"><button type="button" data-insert>Insert / apply changes</button><button type="button" data-remove>Remove selected image</button></div>
+      <div class="cms-image-dialog-actions"><button type="button" data-insert>Insert / apply changes</button><button type="button" data-move-up>Move image up</button><button type="button" data-move-down>Move image down</button><button type="button" data-remove>Remove selected image</button></div>
     </div>`;
     document.body.appendChild(mediaDialog);
     const $image = selector => mediaDialog.querySelector(`[data-${selector}]`);
@@ -186,6 +186,50 @@ updateWordCount();
       const node=editor.state.doc.nodeAt(imageEditPosition);
       if(node?.type?.name==='farmImage')editor.view.dispatch(editor.state.tr.delete(imageEditPosition,imageEditPosition+node.nodeSize));
       mediaDialog.close();
+    });
+    // Reorder an image by one adjacent block, without changing its metadata.
+    // This works with paragraphs, headings, lists and other block nodes.
+    function moveImage(direction) {
+      const pos = imageEditPosition;
+      if (pos === null) return;
+      const doc = editor.state.doc;
+      const node = doc.nodeAt(pos);
+      if (!node || node.type.name !== 'farmImage') return;
+      const resolved = doc.resolve(pos);
+      const parent = resolved.parent;
+      const index = resolved.index();
+      const adjacentIndex = index + direction;
+      if (adjacentIndex < 0 || adjacentIndex >= parent.childCount) {
+        imageStatus(direction < 0 ? 'Image is already first in this section.' : 'Image is already last in this section.');
+        return;
+      }
+      const adjacent = parent.child(adjacentIndex);
+      const start = direction < 0 ? pos - adjacent.nodeSize : pos;
+      const end = direction < 0 ? pos + node.nodeSize : pos + node.nodeSize + adjacent.nodeSize;
+      const reordered = direction < 0 ? [node, adjacent] : [adjacent, node];
+      const newPos = direction < 0 ? start : pos + adjacent.nodeSize;
+      try {
+        editor.view.dispatch(editor.state.tr.replaceWith(start, end, reordered));
+        imageEditPosition = newPos;
+        savedInsertPosition = newPos;
+        editor.commands.setNodeSelection(newPos);
+        imageStatus('Image moved. Save the article to keep this position.');
+      } catch (error) {
+        console.error('Image move failed:', error);
+        imageStatus('Could not move the image across this block.');
+      }
+    }
+    $image('move-up').addEventListener('click', () => moveImage(-1));
+    $image('move-down').addEventListener('click', () => moveImage(1));
+
+    // Clicking selects the photograph, so the main image toolbar edits it.
+    mount.addEventListener('click', event => {
+      const figure = event.target.closest?.('figure[data-farm-image]');
+      if (!figure || !mount.contains(figure)) return;
+      const pos = editor.view.posAtDOM(figure, 0);
+      if (editor.state.doc.nodeAt(pos)?.type?.name === 'farmImage') {
+        editor.commands.setNodeSelection(pos);
+      }
     });
     // Double-click a photo to edit its size, position, caption, or replace it.
     mount.addEventListener('dblclick',event=>{
