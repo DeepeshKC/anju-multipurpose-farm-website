@@ -46,6 +46,7 @@ export async function onRequestGet({ env, params, request }) {
 
       WHERE p.slug = ?
         AND en.published_english_revision_id IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM article_trash t WHERE t.post_id = p.id)
     `).bind(params.slug).first();
 
     if (cms) {
@@ -83,6 +84,7 @@ export async function onRequestGet({ env, params, request }) {
 
       WHERE p.slug = ?
         AND p.status = 'published'
+        AND NOT EXISTS (SELECT 1 FROM article_trash t WHERE t.post_id = p.id)
         AND NOT EXISTS (
           SELECT 1
           FROM post_translations en
