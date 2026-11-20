@@ -79,6 +79,7 @@ export async function onRequestGet(ctx) {
         ON approved.id = ne.approved_revision_id
         AND approved.translation_id = ne.id
 
+      WHERE NOT EXISTS (SELECT 1 FROM article_trash t WHERE t.post_id = p.id)
       ORDER BY p.updated_at DESC, p.id DESC
       LIMIT 100
     `).all();
