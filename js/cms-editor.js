@@ -7,7 +7,7 @@ const FarmImage = Node.create({
   addAttributes() { return {
     src: { default: null }, alt: { default: '' }, caption: { default: '' }, mediaId: { default: null },
     size: { default: 'large' }, align: { default: 'center' }, widthPct: { default: 100 },
-    wrap: { default: 'none' }, crop: { default: 100 }, cropX: { default: 50 }, cropY: { default: 50 }
+    wrap: { default: 'none' }, crop: { default: 100 }, cropX: { default: 50 }, cropY: { default: 50 }, rotation: { default: 0 }
   }; },
   parseHTML() { return [{ tag: 'figure[data-farm-image]', getAttrs: el => ({
     src: el.querySelector('img')?.getAttribute('src'), alt: el.querySelector('img')?.getAttribute('alt') || '',
@@ -15,14 +15,14 @@ const FarmImage = Node.create({
     size: el.dataset.size || 'large', align: el.dataset.align || 'center',
     widthPct: Number(el.dataset.widthPct) || 100, wrap: el.dataset.wrap || 'none',
     crop: Number(el.dataset.crop) || 100, cropX: Number(el.dataset.cropX) || 50,
-    cropY: Number(el.dataset.cropY) || 50
+    cropY: Number(el.dataset.cropY) || 50, rotation: Number(el.dataset.rotation) || 0
   }) }]; },
   renderHTML({ HTMLAttributes: a }) { return ['figure', {
     'data-farm-image': '', 'data-media-id': a.mediaId, 'data-size': a.size, 'data-align': a.align,
     'data-width-pct': a.widthPct, 'data-wrap': a.wrap, 'data-crop': a.crop,
-    'data-crop-x': a.cropX, 'data-crop-y': a.cropY,
+    'data-crop-x': a.cropX, 'data-crop-y': a.cropY, 'data-rotation': a.rotation,
     class: `farm-inline-image farm-size-${a.size} farm-align-${a.align} farm-wrap-${a.wrap}`,
-    style: `--farm-width:${a.widthPct}%;--farm-crop:${a.crop}%;--farm-crop-x:${a.cropX}%;--farm-crop-y:${a.cropY}%`
+    style: `--farm-width:${a.widthPct}%;--farm-crop:${a.crop}%;--farm-crop-x:${a.cropX}%;--farm-crop-y:${a.cropY}%;--farm-rotation:${a.rotation || 0}deg`
   }, ['div', { class: 'farm-image-window' }, ['img', { src: a.src, alt: a.alt, loading: 'lazy' }]],
     ['figcaption', {}, a.caption || '']]; },
   addNodeView() { return ({ node, getPos, editor }) => {
@@ -30,28 +30,24 @@ const FarmImage = Node.create({
     const figure = document.createElement('figure');
     figure.dataset.farmImage = '';
     figure.className = 'farm-inline-image farm-editable-image';
-    figure.contentEditable = 'false';
-    const viewport = document.createElement('div'); viewport.className = 'farm-image-window';
+    figure.draggable = true;
+    const windowEl = document.createElement('div'); windowEl.className = 'farm-image-window';
     const img = document.createElement('img'); img.draggable = false;
     const caption = document.createElement('figcaption');
-    const actions = document.createElement('div'); actions.className = 'farm-image-quick-actions';
-    const move = document.createElement('button'); move.type = 'button'; move.textContent = 'Drag to move';
-    move.className = 'farm-image-move'; move.draggable = true; move.title = 'Drag onto a paragraph to move the photograph';
-    const edit = document.createElement('button'); edit.type = 'button'; edit.textContent = 'Edit image';
-    edit.className = 'farm-image-edit';
-    actions.append(move, edit);
-    const grips = ['nw', 'ne', 'sw', 'se'].map(corner => {
+    const handles = ['nw','n','ne','e','se','s','sw','w'].map(direction => {
       const handle = document.createElement('span');
-      handle.className = `farm-image-handle farm-image-handle-${corner}`;
-      handle.dataset.corner = corner;
-      handle.title = 'Drag to resize photograph';
-      handle.setAttribute('role', 'button');
-      handle.setAttribute('aria-label', `Resize image from ${corner} corner`);
+      handle.className = `farm-handle farm-handle-${direction}`;
+      handle.dataset.direction = direction;
+      handle.title = `Resize image (${direction})`;
+      handle.contentEditable = 'false';
       return handle;
     });
-    viewport.append(img, ...grips); figure.append(actions, viewport, caption);
-    const position = () => { try { const pos = getPos(); return typeof pos === 'number' ? pos : null; } catch { return null; } };
-    const select = () => { const pos = position(); if (pos !== null) editor.commands.setNodeSelection(pos); };
+    const rotate = document.createElement('button'); rotate.type='button';
+    rotate.className='farm-rotate-button'; rotate.textContent='↻ Rotate 90°';
+    rotate.title='Rotate image 90 degrees'; rotate.contentEditable='false';
+    const move = document.createElement('span'); move.className='farm-drag-label';
+    move.textContent='⠿ Drag image to move'; move.contentEditable='false';
+    windowEl.append(img, ...handles, rotate); figure.append(move, windowEl, caption);
     const updateDisplay = () => {
       const a = current.attrs;
       figure.className = `farm-inline-image farm-editable-image farm-size-${a.size} farm-align-${a.align} farm-wrap-${a.wrap}`;
@@ -59,61 +55,59 @@ const FarmImage = Node.create({
       figure.style.setProperty('--farm-crop', `${a.crop}%`);
       figure.style.setProperty('--farm-crop-x', `${a.cropX}%`);
       figure.style.setProperty('--farm-crop-y', `${a.cropY}%`);
-      if (img.getAttribute('src') !== a.src) img.src = a.src;
-      img.alt = a.alt || ''; caption.textContent = a.caption || '';
+      figure.style.setProperty('--farm-rotation', `${a.rotation || 0}deg`);
+      img.src = a.src; img.alt = a.alt || ''; caption.textContent = a.caption || '';
     };
     updateDisplay();
-    figure.addEventListener('pointerdown', e => {
-      if (e.target.closest('.farm-image-handle,.farm-image-quick-actions')) return;
-      select();
+    const updateAttributes = changes => {
+      const pos = getPos();
+      if (typeof pos !== 'number') return;
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, {...current.attrs, ...changes}));
+    };
+    for (const handle of handles) {
+      handle.addEventListener('pointerdown', event => {
+        if (event.button !== 0) return;
+        event.preventDefault(); event.stopPropagation();
+        const direction = handle.dataset.direction;
+        const startX = event.clientX, startY = event.clientY;
+        const initial = Number(current.attrs.widthPct) || 100;
+        const editorWidth = editor.view.dom.clientWidth || 700;
+        const bounds = windowEl.getBoundingClientRect();
+        const ratio = bounds.width / Math.max(1, bounds.height);
+        const initialHeight = bounds.height;
+        handle.setPointerCapture(event.pointerId);
+        let lastWidth = initial;
+        const onMove = e => {
+          const dx = e.clientX-startX, dy = e.clientY-startY;
+          const horizontal = direction.includes('e') ? dx : direction.includes('w') ? -dx : 0;
+          const vertical = direction.includes('s') ? dy : direction.includes('n') ? -dy : 0;
+          const change = direction === 'n' || direction === 's' ? vertical * ratio : horizontal;
+          lastWidth = Math.round(Math.max(15, Math.min(100, initial + change*100/editorWidth)));
+          figure.style.setProperty('--farm-width', `${lastWidth}%`);
+        };
+        const finish = e => {
+          handle.removeEventListener('pointermove', onMove);
+          handle.removeEventListener('pointerup', finish);
+          handle.removeEventListener('pointercancel', finish);
+          if (e.type === 'pointercancel') { updateDisplay(); return; }
+          updateAttributes({widthPct: lastWidth});
+        };
+        handle.addEventListener('pointermove', onMove);
+        handle.addEventListener('pointerup', finish);
+        handle.addEventListener('pointercancel', finish);
+      });
+    }
+    rotate.addEventListener('click', e => {
+      e.preventDefault(); e.stopPropagation();
+      updateAttributes({rotation: ((Number(current.attrs.rotation)||0)+90)%360});
     });
-    edit.addEventListener('click', e => { e.preventDefault(); select();
-      const button = [...document.querySelectorAll('#cms-toolbar button')].find(b => b.textContent === 'Insert / edit image');
-      button?.click();
-    });
-    for (const handle of grips) handle.addEventListener('pointerdown', event => {
-      if (event.button !== 0) return;
-      event.preventDefault(); event.stopPropagation(); select();
-      const startX = event.clientX;
-      const startWidth = Number(current.attrs.widthPct) || 100;
-      const parentWidth = editor.view.dom.clientWidth || 700;
-      const sign = handle.dataset.corner.includes('w') ? -1 : 1;
-      let latest = startWidth;
-      const movePointer = e => {
-        latest = Math.round(Math.max(15, Math.min(100, startWidth + sign * (e.clientX-startX)*100/parentWidth)));
-        figure.style.setProperty('--farm-width', `${latest}%`);
-      };
-      const finish = () => {
-        window.removeEventListener('pointermove', movePointer);
-        window.removeEventListener('pointerup', finish);
-        window.removeEventListener('pointercancel', cancel);
-        const pos = position();
-        if (pos !== null) editor.view.dispatch(editor.state.tr.setNodeMarkup(pos, undefined, {...current.attrs, widthPct: latest}));
-      };
-      const cancel = () => { latest = startWidth; figure.style.setProperty('--farm-width', `${startWidth}%`); finish(); };
-      window.addEventListener('pointermove', movePointer);
-      window.addEventListener('pointerup', finish, {once:true});
-      window.addEventListener('pointercancel', cancel, {once:true});
-    });
-    // Native HTML drag and drop: use a dedicated handle, not the image itself.
-    // The editor document is updated with a single transaction on drop.
-    move.addEventListener('dragstart', event => {
-      const pos = position(); if (pos === null) return;
-      select();
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('application/x-farm-image-position', String(pos));
-      event.dataTransfer.setData('text/plain', 'Move image');
-    });
-    return {
-      dom: figure,
-      update(next) { if (next.type !== current.type) return false; current = next; updateDisplay(); return true; },
+    return { dom: figure, update(next) { if (next.type !== current.type) return false; current = next; updateDisplay(); return true; },
       selectNode() { figure.classList.add('ProseMirror-selectednode'); },
       deselectNode() { figure.classList.remove('ProseMirror-selectednode'); },
-      stopEvent(e) { return !!e.target.closest?.('.farm-image-quick-actions,.farm-image-handle'); },
+      stopEvent(e) { return handles.some(h => h === e.target) || e.target === rotate; },
       ignoreMutation() { return true; }
     };
   }; }
-
 });
 
 const section = document.getElementById('cms-section');
@@ -166,11 +160,16 @@ updateWordCount();
   ['Paragraph', () => editor.chain().focus().setParagraph().run()],
   ['H2', () => editor.chain().focus().toggleHeading({ level: 2 }).run()],
   ['H3', () => editor.chain().focus().toggleHeading({ level: 3 }).run()],
+  ['H4', () => editor.chain().focus().toggleHeading({ level: 4 }).run()],
   ['Bold', () => editor.chain().focus().toggleBold().run()],
   ['Italic', () => editor.chain().focus().toggleItalic().run()],
+  ['Underline', () => editor.chain().focus().toggleUnderline().run()],
+  ['Strike', () => editor.chain().focus().toggleStrike().run()],
+  ['Inline code', () => editor.chain().focus().toggleCode().run()],
   ['Bullet list', () => editor.chain().focus().toggleBulletList().run()],
   ['Numbered list', () => editor.chain().focus().toggleOrderedList().run()],
   ['Quote', () => editor.chain().focus().toggleBlockquote().run()],
+  ['Divider', () => editor.chain().focus().setHorizontalRule().run()],
   ['Clear formatting', () => editor.chain().focus().clearNodes().unsetAllMarks().run()],
   ['Undo', () => editor.chain().focus().undo().run()],
   ['Redo', () => editor.chain().focus().redo().run()]
@@ -197,7 +196,7 @@ updateWordCount();
       <label>Alignment <select data-align><option value="left">Left</option><option value="center" selected>Center</option><option value="right">Right</option></select></label>
       <label>Alt text <input type="text" maxlength="500" data-alt></label>
       <label>Caption <input type="text" maxlength="500" data-caption></label>
-      <div class="cms-image-dialog-actions"><button type="button" data-insert>Insert / apply changes</button><button type="button" data-remove>Remove selected image</button></div>
+      <div class="cms-image-dialog-actions"><button type="button" data-insert>Insert / apply changes</button><button type="button" data-move-up>Move image up</button><button type="button" data-move-down>Move image down</button><button type="button" data-remove>Remove selected image</button></div>
     </div>`;
     document.body.appendChild(mediaDialog);
     const $image = selector => mediaDialog.querySelector(`[data-${selector}]`);
@@ -337,39 +336,8 @@ updateWordCount();
         imageStatus('Could not move the image across this block.');
       }
     }
-
-
-    // Drop the image handle before/after the nearest top-level content block.
-    mount.addEventListener('dragover', event => {
-      if (!event.dataTransfer.types.includes('application/x-farm-image-position')) return;
-      event.preventDefault(); event.dataTransfer.dropEffect = 'move';
-    });
-    mount.addEventListener('drop', event => {
-      const raw = event.dataTransfer.getData('application/x-farm-image-position');
-      if (!raw) return;
-      event.preventDefault(); event.stopPropagation();
-      const from = Number(raw);
-      const doc = editor.state.doc;
-      const source = doc.nodeAt(from);
-      if (!Number.isInteger(from) || source?.type?.name !== 'farmImage') return;
-      const target = editor.view.posAtCoords({left:event.clientX,top:event.clientY});
-      if (!target) return;
-      let to = target.pos;
-      // Snap to top-level boundaries to keep the document valid.
-      let cursor = 0, boundary = doc.content.size;
-      doc.forEach(node => {
-        const middle = cursor + node.nodeSize / 2;
-        if (to <= middle && boundary === doc.content.size) boundary = cursor;
-        cursor += node.nodeSize;
-      });
-      to = boundary;
-      if (to === from || to === from + source.nodeSize) return;
-      const tr = editor.state.tr.delete(from, from + source.nodeSize);
-      const insertAt = to > from ? to - source.nodeSize : to;
-      tr.insert(insertAt, source);
-      editor.view.dispatch(tr);
-      editor.commands.setNodeSelection(insertAt);
-    }, true);
+    $image('move-up').addEventListener('click', () => moveImage(-1));
+    $image('move-down').addEventListener('click', () => moveImage(1));
 
     // Clicking selects the photograph, so the main image toolbar edits it.
     mount.addEventListener('click', event => {
