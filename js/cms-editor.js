@@ -265,6 +265,65 @@ updateWordCount();
     zoom.addEventListener('change',()=>mount.style.setProperty('--cms-editor-zoom',zoom.value));ribbon.appendChild(zoom);
     toolbar.after(ribbon);
 
+    // One cohesive ribbon for the EXISTING editor (not a second editor).
+    // Move the existing controls instead of cloning them: all commands retain
+    // their original TipTap editor instance, selections, and save workflow.
+    const workbench = document.createElement('section');
+    workbench.className = 'cms-document-workbench';
+    workbench.setAttribute('aria-label', 'Article document tools');
+    const tabs = document.createElement('div');
+    tabs.className = 'cms-ribbon-tabs';
+    tabs.setAttribute('role', 'tablist');
+    const panels = document.createElement('div');
+    panels.className = 'cms-ribbon-panels';
+    const homePanel = document.createElement('div');
+    const insertPanel = document.createElement('div');
+    const layoutPanel = document.createElement('div');
+    const viewPanel = document.createElement('div');
+    const reviewPanel = document.createElement('div');
+    const ribbonPanels = { Home: homePanel, Insert: insertPanel, Layout: layoutPanel, Review: reviewPanel, View: viewPanel };
+    const ribbonTabs = {};
+    for (const [name,panel] of Object.entries(ribbonPanels)) {
+      panel.className = 'cms-ribbon-panel';
+      panel.setAttribute('role','tabpanel');
+      panel.setAttribute('aria-label',name+' tools');
+      panel.hidden = name !== 'Home';
+      const tab=document.createElement('button');tab.type='button';tab.textContent=name;
+      tab.setAttribute('role','tab');tab.setAttribute('aria-selected',String(name==='Home'));
+      tab.addEventListener('click',()=>{
+        for (const [n,p] of Object.entries(ribbonPanels)) {p.hidden=n!==name;ribbonTabs[n].setAttribute('aria-selected',String(n===name));}
+      });
+      ribbonTabs[name]=tab;tabs.appendChild(tab);panels.appendChild(panel);
+    }
+    workbench.append(tabs,panels);
+    toolbar.before(workbench);
+    toolbar.classList.add('cms-ribbon-controls');
+    homePanel.appendChild(toolbar);
+    // Move the existing image insertion control into Insert without changing its event handlers.
+    const imageInsert = [...toolbar.querySelectorAll('button')].find(b=>/insert \/ edit image/i.test(b.textContent));
+    if (imageInsert) insertPanel.appendChild(imageInsert);
+    layoutPanel.appendChild(ribbon);
+    const findGroup = document.createElement('div');findGroup.className='cms-review-tools';
+    findGroup.append(findInput, [...ribbon.querySelectorAll('button')].find(b=>b.textContent==='Find next'));
+    reviewPanel.appendChild(findGroup);
+    viewPanel.appendChild(zoom);
+    const viewInfo = document.createElement('span');
+    viewInfo.className='cms-view-note';viewInfo.textContent='Zoom affects editing only, not the published article.';
+    viewPanel.appendChild(viewInfo);
+    const focusButton=document.createElement('button');focusButton.type='button';
+    focusButton.textContent='Focus writing';
+    focusButton.addEventListener('click',()=>{
+      workbench.classList.toggle('cms-focus-writing');
+      mount.classList.toggle('cms-focus-writing');
+      focusButton.textContent=mount.classList.contains('cms-focus-writing')?'Exit focus mode':'Focus writing';
+    });
+    viewPanel.appendChild(focusButton);
+    // Prevent toolbar pointer presses from collapsing a selected text range.
+    workbench.addEventListener('mousedown',e=>{
+      if(e.target.closest('button') && !e.target.closest('.cms-ribbon-tabs')) e.preventDefault();
+    });
+
+
     // Keep image selection within the article workflow; no numeric IDs needed.
     const mediaDialog = document.createElement('dialog');
     mediaDialog.id = 'cms-image-dialog';
@@ -451,7 +510,8 @@ updateWordCount();
       button.type = 'button';
       button.textContent = label;
       button.addEventListener('click', action);
-      toolbar.appendChild(button);
+      if (/^Insert \/ edit image$/i.test(label)) insertPanel.appendChild(button);
+      else toolbar.appendChild(button);
     }
 
     const statusMessage = document.createElement('p');
