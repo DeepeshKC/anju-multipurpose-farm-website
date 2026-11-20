@@ -1070,3 +1070,12 @@ a:focus-visible,button:focus-visible{outline:3px solid var(--yellow);outline-off
 #cms-rich-editor .farm-drag-label {display:none;font:12px Arial,sans-serif;color:#275c87;cursor:grab;user-select:none}
 #cms-rich-editor .ProseMirror-selectednode .farm-drag-label {display:block}
 #cms-toolbar {display:flex;flex-wrap:wrap;gap:5px;position:sticky;top:0;z-index:15;background:#f8f7f2;padding:8px;border-bottom:1px solid #ddd}
+
+/* Integrated Word-like controls: continuous responsive writing surface */
+.cms-word-ribbon{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:10px;background:#f3f1e9;border:1px solid #ddd7c9;border-top:0;position:sticky;top:54px;z-index:14}
+.cms-word-ribbon button,.cms-word-ribbon select{font:inherit;padding:6px 9px;border:1px solid #c7c6bf;border-radius:5px;background:white;color:#2d352b;cursor:pointer}
+.cms-word-ribbon strong{font-size:12px;margin-right:7px;color:#52634c}
+.cms-find-input{max-width:160px;min-width:95px;padding:7px;border:1px solid #c7c6bf;border-radius:5px}
+#cms-rich-editor .tiptap{font-size:calc(1rem * var(--cms-editor-zoom,1));min-height:380px;max-width:100%;}
+#cms-rich-editor .tiptap p,#cms-rich-editor .tiptap h2,#cms-rich-editor .tiptap h3,#cms-rich-editor .tiptap h4{white-space:normal}
+@media(max-width:600px){.cms-word-ribbon{position:static}.cms-word-ribbon button{padding:5px 7px}}
