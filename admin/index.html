@@ -150,7 +150,29 @@
     #editor-section[hidden] {
       display: none !important;
     }
-  </style>
+  
+/* Staging CMS: unified Trash & Recovery presentation; no API changes */
+.cms-recovery{margin:30px 0;background:#fff;border:1px solid #dce5db;border-radius:16px;overflow:hidden;box-shadow:0 6px 22px rgba(24,54,35,.04)}
+.cms-recovery-header{padding:25px 27px 17px;background:#fbfcf9}
+.cms-recovery-header h3{font-family:Georgia,serif;font-size:clamp(1.55rem,2.5vw,2rem);color:#193d2f;margin:4px 0 8px}
+.cms-recovery-header p:last-child{color:#637265;margin:0;line-height:1.6}
+.cms-recovery-tabs{display:flex;gap:8px;padding:0 27px 16px;background:#fbfcf9;border-bottom:1px solid #e2e9e1}
+#cms-section .cms-recovery-tabs button{margin:0;padding:11px 20px;border:1px solid #d6e1d6;border-radius:9px;background:#fff;color:#3a5844;font-weight:700;cursor:pointer}
+#cms-section .cms-recovery-tabs button[aria-selected="true"]{background:#204b37;color:#fff;border-color:#204b37}
+#cms-section .cms-recovery-tabs button:focus-visible{outline:3px solid #bc9a4e;outline-offset:2px}
+.cms-recovery-content{padding:23px 27px 25px!important;margin:0!important;border:0!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
+.cms-recovery-content[hidden]{display:none!important}
+.cms-recovery-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:20px}
+.cms-recovery-section-head h4{font-family:Georgia,serif;font-size:1.35rem;color:#1b3e2f;margin:0 0 7px}
+.cms-recovery-section-head p{color:#667469;margin:0;line-height:1.55}
+#cms-section .cms-recovery-section-head button{margin:0;flex-shrink:0;border-radius:8px;padding:10px 16px;min-width:100px}
+.cms-recovery-gallery>p:only-child{width:100%;padding:34px 20px;text-align:center;border:1px dashed #d4dfd4;background:#fafcf9;border-radius:12px;color:#637365;margin:0}
+.cms-recovery #cms-trash-list{margin:0;padding:0;min-height:0}
+.cms-recovery #cms-trash-list:empty::after{content:'No deleted articles';display:block;padding:34px 20px;text-align:center;border:1px dashed #d4dfd4;background:#fafcf9;border-radius:12px;color:#637365}
+.cms-recovery-status{color:#657467;font-size:.88rem;margin:12px 0 0;line-height:1.5}
+.cms-recovery-note{font-size:.84rem;color:#5f705f;border-top:1px solid #e6ebe5;margin:18px 0 0;padding-top:16px;line-height:1.6}
+@media(max-width:640px){.cms-recovery-header{padding:20px 17px 14px}.cms-recovery-tabs{padding:0 17px 15px}.cms-recovery-content{padding:20px 17px!important}.cms-recovery-section-head{flex-direction:column}.cms-recovery-section-head button{align-self:flex-start}}
+</style>
 
 <style id="cms-admin-finish">
 /* Keep the legacy editor's handlers available without displaying a second editor. */
@@ -450,13 +472,46 @@
           </aside>
         </div>
       </section>
-      <section id="cms-media-trash-panel" class="farm-media" aria-labelledby="cms-media-trash-heading">
-        <div class="farm-media-head"><div><p class="farm-media-eyebrow">RECOVERY</p><h3 id="cms-media-trash-heading">Photograph Trash</h3><p>Restore photographs at any time. Permanent deletion is available after 30 days and only when no article or revision references the image.</p></div><button id="cms-media-trash-refresh" type="button" class="farm-media-secondary">Refresh Photograph Trash</button></div>
-        <div id="cms-media-trash-gallery" class="farm-media-gallery"></div>
-        <button id="cms-media-trash-more" type="button" class="farm-media-secondary" hidden>Load more</button>
-        <p id="cms-media-trash-status" role="status" aria-live="polite"></p>
+      <section id="cms-recovery" class="cms-recovery" aria-labelledby="cms-recovery-heading">
+        <div class="cms-recovery-header">
+          <div><p class="farm-media-eyebrow">CONTENT MANAGEMENT · RECOVERY</p><h3 id="cms-recovery-heading">Trash &amp; Recovery</h3><p>Review deleted content, restore it when needed, or permanently remove eligible items.</p></div>
+        </div>
+        <div class="cms-recovery-tabs" role="tablist" aria-label="Trash category">
+          <button type="button" id="cms-recovery-photos-tab" role="tab" aria-selected="true" aria-controls="cms-media-trash-panel">Photographs</button>
+          <button type="button" id="cms-recovery-articles-tab" role="tab" aria-selected="false" aria-controls="cms-trash-panel" tabindex="-1">Articles</button>
+        </div>
+        <section id="cms-media-trash-panel" class="cms-recovery-content farm-media" role="tabpanel" aria-labelledby="cms-recovery-photos-tab">
+          <div class="cms-recovery-section-head"><div><h4>Deleted photographs</h4><p>Recover photographs with their original URLs and bilingual details.</p></div><button id="cms-media-trash-refresh" type="button" class="farm-media-secondary">Refresh</button></div>
+          <div id="cms-media-trash-gallery" class="farm-media-gallery cms-recovery-gallery"></div>
+          <button id="cms-media-trash-more" type="button" class="farm-media-secondary" hidden>Load more</button>
+          <p id="cms-media-trash-status" role="status" aria-live="polite" class="cms-recovery-status"></p>
+          <p class="cms-recovery-note">Photographs can be restored at any time. Permanent deletion is available after 30 days only when no article or revision references the image.</p>
+        </section>
+        <section id="cms-trash-panel" class="cms-recovery-content cms-trash-panel" role="tabpanel" aria-labelledby="cms-recovery-articles-tab" hidden>
+          <div class="cms-recovery-section-head"><div><h4>Deleted articles</h4><p>Restore articles or permanently delete them. Moving an article to Trash hides it from the public blog.</p></div><button id="cms-trash-refresh" type="button" class="farm-media-secondary">Refresh</button></div>
+          <ul id="cms-trash-list" class="cms-article-cards"></ul>
+          <p id="cms-trash-status" role="status" aria-live="polite" class="cms-recovery-status"></p>
+        </section>
       </section>
-      <section id="cms-trash-panel" class="cms-trash-panel"><h3>Article Trash</h3><p class="admin-note">Restore articles or permanently delete them. Moving to Trash hides articles from the public blog.</p><button id="cms-trash-refresh" type="button">Refresh Trash</button><ul id="cms-trash-list" class="cms-article-cards"></ul><p id="cms-trash-status" role="status"></p></section>
+      <script>
+        (() => {
+          const tabs = [document.getElementById('cms-recovery-photos-tab'), document.getElementById('cms-recovery-articles-tab')];
+          const panels = [document.getElementById('cms-media-trash-panel'), document.getElementById('cms-trash-panel')];
+          function activate(index, focus = false) {
+            tabs.forEach((tab, i) => { tab.setAttribute('aria-selected', String(i === index)); tab.tabIndex = i === index ? 0 : -1; panels[i].hidden = i !== index; });
+            if (focus) tabs[index].focus();
+          }
+          tabs.forEach((tab, i) => {
+            tab.addEventListener('click', () => activate(i));
+            tab.addEventListener('keydown', event => {
+              if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+              event.preventDefault();
+              activate(event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (i + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length, true);
+            });
+          });
+          activate(0);
+        })();
+      </script>
       <!-- English draft form -->
 
       <form id="cms-form" hidden>
