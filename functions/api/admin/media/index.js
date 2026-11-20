@@ -21,10 +21,14 @@ export async function onRequestPost(ctx){
 }
 
 export async function onRequestGet(ctx) {
- const denied = await guard(ctx); if (denied) return denied;
- if (!ctx.env.DB) return reply({error:'Database unavailable'},503);
- try {
-  const data = await ctx.env.DB.prepare('SELECT id, secure_url, alt_en, alt_ne, caption_en, caption_ne FROM cloudinary_media ORDER BY id DESC LIMIT 100').all();
-  return reply({items:data.results || []});
- } catch(e) { console.error(e); return reply({error:'Media library unavailable'},503); }
+ const denied=await guard(ctx);if(denied)return denied;
+ if(!ctx.env.DB)return reply({error:'Database unavailable'},503);
+ const url=new URL(ctx.request.url);
+ const limit=Math.min(100,Math.max(1,Number.parseInt(url.searchParams.get('limit')||'60',10)||60));
+ const offset=Math.max(0,Number.parseInt(url.searchParams.get('offset')||'0',10)||0);
+ try{
+  const data=await ctx.env.DB.prepare('SELECT id,secure_url,format,width,height,bytes,alt_en,alt_ne,caption_en,caption_ne,created_at FROM cloudinary_media ORDER BY id DESC LIMIT ? OFFSET ?').bind(limit+1,offset).all();
+  const rows=data.results||[];
+  return reply({items:rows.slice(0,limit),has_more:rows.length>limit});
+ }catch(e){console.error(e);return reply({error:'Media library unavailable'},503);}
 }
