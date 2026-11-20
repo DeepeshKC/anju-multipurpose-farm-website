@@ -152,7 +152,55 @@
     }
   </style>
 
-  <script src="../js/admin.js" defer></script>
+<style id="cms-admin-finish">
+/* Keep the legacy editor's handlers available without displaying a second editor. */
+.cms-logout-button{margin-left:auto;border:1px solid #bacdc0;background:#fff;color:#254535;border-radius:7px;padding:10px 16px;cursor:pointer}
+#editor-section,#editor-section:not([hidden]){display:none!important}
+.admin-wrap{max-width:1480px!important;width:100%;padding:34px clamp(18px,4vw,64px)!important}
+#cms-section{margin-top:18px!important}
+#cms-section>hr{display:none}
+#cms-heading{font-size:clamp(1.6rem,2.4vw,2.25rem)!important;margin:8px 0}
+#cms-section>.admin-note{max-width:75ch;margin:0 0 22px}
+.cms-list-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:28px 0 14px}
+.cms-list-heading h3{font-size:1.35rem;margin:0 0 4px}
+.cms-list-heading p{margin:0}
+.cms-list-tools{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.cms-list-tools label{font-size:.8rem;margin:0 0 5px!important}
+.cms-list-tools input{min-width:min(300px,78vw)}
+.cms-list-tools select{min-width:170px}
+.cms-article-cards{list-style:none;padding:0!important;margin:0 0 28px;display:grid;gap:13px}
+.cms-article-cards>li{background:#fff;border:1px solid #dce3db;border-radius:13px;padding:19px 22px;margin:0!important;box-shadow:0 3px 14px rgba(16,50,35,.045)}
+.cms-article-cards>li[hidden]{display:none!important}
+.cms-card-top{display:flex;align-items:start;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.cms-card-title{display:block;font-size:1.12rem;font-weight:750;color:#193d2f;line-height:1.4}
+.cms-card-slug{display:block;color:#65746b;font-size:.83rem;overflow-wrap:anywhere;margin-top:4px}
+.cms-card-badges{display:flex;gap:7px;flex-wrap:wrap}
+.cms-card-badge{font-size:.75rem;font-weight:700;border-radius:30px;padding:5px 10px;background:#f0f2ef;color:#44544a}
+.cms-card-badge.is-live{background:#e4f4e9;color:#1d6941}
+.cms-card-badge.is-review{background:#fff0d8;color:#845211}
+.cms-article-cards .cms-publication-meta{font-size:.78rem;color:#68756b;line-height:1.5;margin:10px 0!important}
+.cms-card-actions{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #edf0ed;padding-top:12px;margin-top:12px}
+.cms-card-actions button{margin:0!important;border:1px solid #cdd8cf;border-radius:7px;background:#f9fbf9;color:#234637;padding:9px 13px;cursor:pointer;font-size:.84rem;font-weight:650}
+.cms-card-actions button:hover:not(:disabled){background:#e9f2eb;border-color:#95b29c}
+.cms-card-actions button:focus-visible{outline:3px solid #bd9c55;outline-offset:2px}
+.cms-card-actions button:disabled{opacity:.45;cursor:not-allowed}
+.cms-card-actions button.cms-primary-action{background:#173e30;color:#fff;border-color:#173e30}
+.cms-card-actions button.cms-publish-action{background:#e9f5ed;border-color:#a9cdb3}
+.cms-card-extra{font-size:.81rem;color:#576a5d;display:block;margin-top:9px}
+.cms-review-history{flex-basis:100%;width:100%}
+#cms-form{background:#fff;border:1px solid #dfe6df;border-radius:15px;padding:clamp(18px,3vw,34px);box-shadow:0 6px 22px rgba(24,54,35,.05);margin-top:26px}
+#cms-form[hidden]{display:none!important}
+#cms-form>label{font-size:.88rem;color:#284534}
+#cms-form>input,#cms-form>textarea{max-width:100%}
+#cms-media-panel{background:#f9fbf9!important;border-color:#dce5dc!important;border-radius:13px!important}
+#cms-rich-editor{border-radius:10px!important}
+#cms-form .cms-seo-heading{border-top:1px solid #e5e9e5;padding-top:25px;margin-top:30px}
+#cms-section .admin-actions{align-items:center}
+#cms-section button{transition:background-color .15s ease,border-color .15s ease}
+@media(max-width:700px){.cms-list-tools,.cms-list-tools>div{width:100%}.cms-list-tools input,.cms-list-tools select{width:100%}.cms-article-cards>li{padding:15px}.admin-wrap{padding:18px!important}}
+</style>
+  <script defer src="../js/admin.js"></script>
+  <script defer src="../js/admin-finish.js"></script>
   <script type="module" src="../js/cms-editor.js"></script>
   <script type="module" src="../js/cms-media.js"></script>
 </head>
@@ -215,9 +263,9 @@
 
     </section>
 
-    <!-- Existing blog editor -->
+    <!-- Legacy editor retained for compatibility; intentionally hidden from the UI -->
 
-    <section id="editor-section" hidden>
+    <section id="editor-section" hidden aria-hidden="true">
 
       <div class="admin-actions">
 
@@ -352,13 +400,11 @@
         id="cms-heading"
         style="font-size: 2rem"
       >
-        New CMS Editor
+        Article management
       </h2>
 
       <p class="admin-note">
-        Bilingual CMS development.
-        English draft editing is being introduced first.
-        Nepali translation and approval will follow.
+        Create, edit, translate, review and publish your farm stories in one workspace.
       </p>
 
       <div class="admin-actions">
@@ -370,19 +416,20 @@
         >
           New English draft
         </button>
+        <button id="cms-logout" type="button" class="cms-logout-button">Sign out</button>
 
       </div>
 
-      <h3>CMS Articles</h3>
+      <div class="cms-list-heading"><div><h3>All articles</h3><p class="admin-note">Manage English and Nepali versions, publication and reviews.</p></div><div class="cms-list-tools"><label for="cms-article-search">Search articles</label><input id="cms-article-search" type="search" placeholder="Search by title or URL slug" autocomplete="off"><select id="cms-article-filter" aria-label="Filter publication status"><option value="all">All articles</option><option value="published">Published</option><option value="draft">Not published</option><option value="review">Needs review</option></select></div></div>
 
       <ul
         id="cms-articles-list"
-        class="admin-list"
+        class="admin-list cms-article-cards"
       ></ul>
 
       <section id="cms-media-panel" aria-label="Cloudinary media uploads" style="margin:24px 0;padding:20px;border:1px solid #ccc;border-radius:8px">
-        <h3>Media uploads (staging)</h3>
-        <p class="admin-note">Upload an image to the staging Cloudinary library. This does not attach or publish the image in an article yet.</p>
+        <h3>Media library</h3>
+        <p class="admin-note">Upload photos for articles. After uploading, insert them into your article using the editor.</p>
         <label for="cms-media-file">Image (JPEG, PNG, WebP, AVIF; maximum 10 MB)</label>
         <input id="cms-media-file" type="file" accept="image/jpeg,image/png,image/webp,image/avif">
         <label for="cms-media-alt-en">English alt text</label><input id="cms-media-alt-en" maxlength="500">
@@ -462,7 +509,7 @@
 
         <!-- SEO fields -->
 
-        <h3>Search Engine Optimization</h3>
+        <h3 class="cms-seo-heading">Search Engine Optimization</h3>
 
         <label for="cms-seo-title">
           SEO title
@@ -483,8 +530,7 @@
         ></textarea>
 
         <p class="admin-note">
-          Articles are saved as private drafts.
-          Publication is not available in this editor yet.
+          Save a draft before publishing. Use the article list to manage publication and Nepali editorial review.
         </p>
 
         <div class="admin-actions">
