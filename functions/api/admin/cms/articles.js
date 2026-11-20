@@ -198,14 +198,18 @@ export function renderDocument(doc) {
     }
 
     if (node.type === 'farmImage') {
-      const { src, alt = '', caption = '', mediaId, size = 'large', align = 'center' } = attrs;
+      const { src, alt = '', caption = '', mediaId, size = 'large', align = 'center', widthPct = 100, wrap = 'none', crop = 100, cropX = 50, cropY = 50 } = attrs;
       if (node.content !== undefined || !Number.isSafeInteger(mediaId) || mediaId < 1 ||
           typeof src !== 'string' || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src) ||
           typeof alt !== 'string' || alt.length > 500 || typeof caption !== 'string' || caption.length > 500 ||
-          !['small','medium','large','full'].includes(size) || !['left','center','right'].includes(align)) {
+          !['small','medium','large','full'].includes(size) || !['left','center','right'].includes(align) ||
+          !['none','left','right'].includes(wrap) ||
+          ![widthPct,crop,cropX,cropY].every(Number.isInteger) ||
+          widthPct < 15 || widthPct > 100 || crop < 25 || crop > 100 ||
+          cropX < 0 || cropX > 100 || cropY < 0 || cropY > 100) {
         throw new Error('Invalid inline image');
       }
-      return `<figure class="farm-inline-image farm-size-${size} farm-align-${align}"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy"><figcaption>${escapeHtml(caption)}</figcaption></figure>`;
+      return `<figure class="farm-inline-image farm-size-${size} farm-align-${align} farm-wrap-${wrap}" data-farm-image="" data-wrap="${wrap}" data-width-pct="${widthPct}" data-crop="${crop}" data-crop-x="${cropX}" data-crop-y="${cropY}"><div class="farm-image-window"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy"></div><figcaption>${escapeHtml(caption)}</figcaption></figure>`;
     }
     if (node.type === 'hardBreak') return '<br>';
     if (node.type === 'horizontalRule') return '<hr>';
