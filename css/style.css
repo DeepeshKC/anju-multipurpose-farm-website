@@ -1142,3 +1142,11 @@ body:has(#cms-section:not([hidden])) main {max-width:1480px;width:min(96%,1480px
 .farm-drop-indicator {position:fixed; height:0; border-top:3px solid #267a57; z-index:99999; pointer-events:none; box-shadow:0 0 0 1px white;}
 #cms-rich-editor .farm-drag-label {touch-action:none; cursor:grab;}
 #cms-rich-editor .farm-is-dragging .farm-drag-label {cursor:grabbing;}
+
+/* Staging editor: tighter document spacing and precise image drop cursor. */
+#cms-section #cms-rich-editor .tiptap {padding:clamp(20px,2.4vw,34px)!important;min-height:420px;}
+#cms-section #cms-rich-editor .tiptap > :first-child {margin-top:0;}
+#cms-section #cms-rich-editor .tiptap p {margin:.55em 0;}
+.cms-document-workbench {margin-bottom:0;}
+.farm-drop-indicator.farm-drop-indicator-caret {border-top:0;border-left:3px solid #267a57;box-shadow:0 0 0 1px white;}
+@media(max-width:760px){#cms-section #cms-rich-editor .tiptap{padding:18px!important;min-height:360px;}}
