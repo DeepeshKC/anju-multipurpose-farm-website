@@ -24,10 +24,12 @@ export async function onRequestGet(ctx) {
  const denied=await guard(ctx);if(denied)return denied;
  if(!ctx.env.DB)return reply({error:'Database unavailable'},503);
  const url=new URL(ctx.request.url);
+ const trash=url.searchParams.get('trash')==='1';
  const limit=Math.min(100,Math.max(1,Number.parseInt(url.searchParams.get('limit')||'60',10)||60));
  const offset=Math.max(0,Number.parseInt(url.searchParams.get('offset')||'0',10)||0);
  try{
-  const data=await ctx.env.DB.prepare('SELECT id,secure_url,format,width,height,bytes,alt_en,alt_ne,caption_en,caption_ne,created_at FROM cloudinary_media ORDER BY id DESC LIMIT ? OFFSET ?').bind(limit+1,offset).all();
+  const sql=trash ? 'SELECT m.id,m.secure_url,m.format,m.width,m.height,m.bytes,m.alt_en,m.alt_ne,m.caption_en,m.caption_ne,m.created_at,t.deleted_at FROM cloudinary_media m JOIN cloudinary_media_trash t ON t.media_id=m.id ORDER BY t.deleted_at DESC,m.id DESC LIMIT ? OFFSET ?' : 'SELECT id,secure_url,format,width,height,bytes,alt_en,alt_ne,caption_en,caption_ne,created_at FROM cloudinary_media WHERE NOT EXISTS (SELECT 1 FROM cloudinary_media_trash t WHERE t.media_id=cloudinary_media.id) ORDER BY id DESC LIMIT ? OFFSET ?';
+  const data=await ctx.env.DB.prepare(sql).bind(limit+1,offset).all();
   const rows=data.results||[];
   return reply({items:rows.slice(0,limit),has_more:rows.length>limit});
  }catch(e){console.error(e);return reply({error:'Media library unavailable'},503);}
