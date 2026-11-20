@@ -85,15 +85,22 @@ const FarmImage = Node.create({
       const hit = view.posAtCoords({left:x, top:y});
       if (!hit) return null;
       const $hit = view.state.doc.resolve(hit.pos);
-      // Find a top-level block. We never insert inside a paragraph or image.
       if ($hit.depth < 1) return null;
       const blockPos = $hit.before(1);
       const block = $hit.node(1);
       const dom = view.nodeDOM(blockPos);
       const rect = dom?.getBoundingClientRect?.();
+      // A text cursor inside a top-level paragraph or heading is a valid
+      // insertion point. ProseMirror will split that block when the block
+      // image is inserted; the text on either side remains in order.
+      if ($hit.depth === 1 && block.isTextblock && rect) {
+        const caret = view.coordsAtPos(hit.pos);
+        return {boundary:hit.pos, rect, caret, insideText:true};
+      }
+      // Lists, quotes, existing images and other nested blocks retain the
+      // safe before/after behavior to avoid corrupting their structure.
       const after = rect ? y > rect.top + rect.height / 2 : hit.pos > blockPos + block.nodeSize / 2;
-      const boundary = blockPos + (after ? block.nodeSize : 0);
-      return {boundary, rect, after};
+      return {boundary:blockPos + (after ? block.nodeSize : 0), rect, after, insideText:false};
     };
     const onMovePointer = e => {
       if (!activeMove || e.pointerId !== activeMove.pointerId) return;
@@ -101,13 +108,23 @@ const FarmImage = Node.create({
       activeMove.target = target;
       if (!target?.rect) { marker.remove(); return; }
       if (!marker.isConnected) document.body.appendChild(marker);
-      marker.style.left = `${target.rect.left}px`;
-      marker.style.top = `${target.after ? target.rect.bottom : target.rect.top}px`;
-      marker.style.width = `${target.rect.width}px`;
+      if (target.insideText && target.caret) {
+        marker.classList.add('farm-drop-indicator-caret');
+        marker.style.left = `${target.caret.left}px`;
+        marker.style.top = `${target.caret.top}px`;
+        marker.style.width = '3px';
+        marker.style.height = `${Math.max(16,target.caret.bottom-target.caret.top)}px`;
+      } else {
+        marker.classList.remove('farm-drop-indicator-caret');
+        marker.style.left = `${target.rect.left}px`;
+        marker.style.top = `${target.after ? target.rect.bottom : target.rect.top}px`;
+        marker.style.width = `${target.rect.width}px`;
+        marker.style.height = '0';
+      }
     };
     const onMoveRelease = e => {
       if (!activeMove || e.pointerId !== activeMove.pointerId) return;
-      const target = activeMove.target || dropBoundary(e.clientX, e.clientY);
+      const target = dropBoundary(e.clientX, e.clientY) || activeMove.target;
       const from = activeMove.from;
       clearMove();
       if (!target) return;
@@ -117,14 +134,18 @@ const FarmImage = Node.create({
       const end = from + nodeToMove.nodeSize;
       const dest = target.boundary;
       if (dest >= from && dest <= end) return;
-      // Delete first, then map the destination through the deletion.
-      let tr = state.tr.delete(from, end);
-      const mapped = tr.mapping.map(dest);
-      tr = tr.insert(mapped, nodeToMove);
-      // Keep the moved image selected after the document transaction.
-      view.dispatch(tr);
-      editor.commands.setNodeSelection(mapped);
-      view.focus();
+      try {
+        let tr = state.tr.delete(from, end);
+        const mapped = tr.mapping.map(dest);
+        // replaceRangeWith fits a block image into the document, splitting a
+        // paragraph at the caret if necessary, instead of nesting an image
+        // inside paragraph text (which the schema does not permit).
+        tr = tr.replaceRangeWith(mapped, mapped, nodeToMove);
+        view.dispatch(tr.scrollIntoView());
+        view.focus();
+      } catch (error) {
+        console.warn('Image move could not be completed; article unchanged.', error);
+      }
     };
     const onMoveCancel = e => {
       if (activeMove && e.pointerId === activeMove.pointerId) clearMove();
