@@ -198,6 +198,8 @@
 #cms-section .admin-actions{align-items:center}
 #cms-section button{transition:background-color .15s ease,border-color .15s ease}
 @media(max-width:700px){.cms-list-tools,.cms-list-tools>div{width:100%}.cms-list-tools input,.cms-list-tools select{width:100%}.cms-article-cards>li{padding:15px}.admin-wrap{padding:18px!important}}
+ .cms-trash-panel{margin:28px 0;padding:20px;border:1px solid #dce3db;border-radius:12px;background:#fff}
+ .cms-danger{color:#9a2626!important;border-color:#d7a9a9!important}
 </style>
   <script defer src="../js/admin.js"></script>
   <script type="module" src="../js/cms-editor.js"></script>
@@ -443,11 +445,12 @@
             <label for="cms-media-alt-ne">Nepali alt text</label><input id="cms-media-alt-ne" maxlength="500" placeholder="नेपालीमा वर्णन">
             <label for="cms-media-caption-en">English caption</label><input id="cms-media-caption-en" maxlength="500" placeholder="Optional caption">
             <label for="cms-media-caption-ne">Nepali caption</label><input id="cms-media-caption-ne" maxlength="500" placeholder="वैकल्पिक क्याप्सन">
-            <div class="farm-media-actions"><button type="button" id="cms-media-upload" hidden>Upload photograph</button><button type="button" id="cms-media-save" hidden>Save details</button><button type="button" id="cms-media-insert" hidden>Use in editor</button></div>
+            <div class="farm-media-actions"><button type="button" id="cms-media-upload" hidden>Upload photograph</button><button type="button" id="cms-media-save" hidden>Save details</button><button type="button" id="cms-media-delete" hidden class="farm-media-secondary">Delete photograph</button><button type="button" id="cms-media-insert" hidden>Use in editor</button></div>
             <p id="cms-media-status" role="status" aria-live="polite"></p><div id="cms-media-result"></div>
           </aside>
         </div>
       </section>
+      <section id="cms-trash-panel" class="cms-trash-panel"><h3>Article Trash</h3><p class="admin-note">Restore articles or permanently delete them. Moving to Trash hides articles from the public blog.</p><button id="cms-trash-refresh" type="button">Refresh Trash</button><ul id="cms-trash-list" class="cms-article-cards"></ul><p id="cms-trash-status" role="status"></p></section>
       <!-- English draft form -->
 
       <form id="cms-form" hidden>
