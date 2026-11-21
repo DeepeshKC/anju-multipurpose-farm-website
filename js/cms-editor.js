@@ -1487,7 +1487,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         await loadArticles();
         showStatus(`${name} article #${id} published successfully${publicationDetail(result.published)}.`);
         // Keep the result visible after the article list refreshes.
-        statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         console.error(`${name} publication failed:`, error);
         showStatus(error.message, true);
@@ -1967,16 +1967,23 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         const savedId = isEditing ? targetId : result.id;
         const savedLanguage = isNepali ? 'Nepali' : 'English';
 
-        clearForm();
-        form.hidden = true;
+        // Keep the editor open after saving. Hiding it collapses the page
+        // above the viewport and causes the unexpected mid-page jump.
+        editingId = savedId;
+        if (!isNepali) {
+          slugField.readOnly = true;
+          categoryField.readOnly = true;
+        }
+        saveButton.textContent = isNepali ? 'Save Nepali draft' : 'Update English draft';
+        recordEditorSnapshot();
 
-        showStatus(
-          `${savedLanguage} draft #${savedId} saved successfully.`
-        );
-
+        showStatus(`${savedLanguage} draft #${savedId} saved successfully.`);
         console.log('CMS draft saved:', result);
 
+        const previousScroll = window.scrollY;
         await loadArticles();
+        // Re-rendering the list must not move the reader away from their work.
+        requestAnimationFrame(() => window.scrollTo({ top: previousScroll, left: 0, behavior: 'instant' }));
 
       } catch (error) {
         console.error('CMS draft saving failed:', error);
