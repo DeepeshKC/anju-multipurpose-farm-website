@@ -227,6 +227,13 @@
   <script type="module" src="../js/cms-editor.js"></script>
   <link rel="stylesheet" href="../css/cms-media.css">
   <script type="module" src="../js/cms-media.js"></script>
+  <script>
+    // Admin dashboard should open at the beginning, not a restored lower section.
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+    window.addEventListener('pageshow', () => {
+      if (!location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    });
+  </script>
 </head>
 
 <body>
