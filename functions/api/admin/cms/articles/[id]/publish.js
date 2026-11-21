@@ -23,6 +23,8 @@ export async function onRequestPost(ctx) {
     `).bind(id).first();
 
     if (!article) return reply({ error: 'English CMS article not found' }, 404);
+    const approval = await db.prepare(`SELECT decision FROM english_editorial_reviews WHERE translation_id=? AND source_version=? ORDER BY id DESC LIMIT 1`).bind(article.translation_id,article.source_version).first();
+    if(approval?.decision !== 'approved')return reply({error:'Current English revision must be approved before publication'},409);
     if (article.status !== 'draft') {
       return reply({ error: 'CMS article must retain legacy draft status' }, 409);
     }
@@ -61,6 +63,7 @@ export async function onRequestPost(ctx) {
             SELECT 1 FROM posts p
             WHERE p.id = post_translations.post_id AND p.status = 'draft'
           )
+          AND (SELECT decision FROM english_editorial_reviews review WHERE review.translation_id=post_translations.id AND review.source_version=post_translations.source_version ORDER BY review.id DESC LIMIT 1)='approved'
           AND EXISTS (
             SELECT 1 FROM english_publication_revisions r
             WHERE r.translation_id = post_translations.id
