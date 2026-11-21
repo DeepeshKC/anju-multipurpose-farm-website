@@ -682,48 +682,61 @@ updateWordCount();
       articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // TipTap StarterKit produces a limited set of nodes. Rebuild preview HTML
-    // from a strict allowlist rather than trusting arbitrary HTML strings.
-    function safePreviewHtml(rawHtml) {
-      const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
-      const allowed = new Set([
-        'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
-        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'FIGURE', 'IMG', 'FIGCAPTION'
-      ]);
-      function copyNode(node) {
-        if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
-        if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
-        const fragment = document.createDocumentFragment();
-        const destination = allowed.has(node.tagName)
-          ? document.createElement(node.tagName.toLowerCase()) : fragment;
-        if (['P','H2','H3','H4'].includes(node.tagName)) {
-          const align=node.style.textAlign;
-          if(['left','center','right','justify'].includes(align)) destination.style.textAlign=align;
-          const line=node.style.lineHeight;
-          if(['1.2','1.4','1.65','2'].includes(line)) destination.style.lineHeight=line;
-          const indent=Math.min(4,Math.max(0,parseInt(node.dataset.indent||'0',10)||0));
-          if(indent) destination.style.marginLeft=`${indent*1.5}rem`;
-        }
-        if (node.tagName === 'IMG') {
-          const src = node.getAttribute('src') || '';
-          if (!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(src)) return fragment;
-          destination.setAttribute('src', src);
-          destination.setAttribute('alt', node.getAttribute('alt') || '');
-          destination.setAttribute('loading', 'lazy');
-        }
-        if (node.tagName === 'FIGURE') {
-          for (const key of ['widthPct','crop','cropX','cropY']) {
-            const val=Number(node.dataset[key]);
-            if(Number.isFinite(val)) destination.style.setProperty({'widthPct':'--farm-width','crop':'--farm-crop','cropX':'--farm-crop-x','cropY':'--farm-crop-y'}[key],`${val}%`);
-          }
-          const wrap=node.dataset.wrap;
-          if(['none','left','right'].includes(wrap)) destination.classList.add(`farm-wrap-${wrap}`);
-          const classes=(node.getAttribute('class')||'').split(/\s+/).filter(c=>/^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right))$/.test(c)); destination.classList.add(...classes); }
-        for (const child of node.childNodes) destination.appendChild(copyNode(child));
-        return destination;
-      }
+    // Build preview from the same JSON saved to the database. This avoids
+    // depending on the interactive NodeView's HTML serialization.
+    function safePreviewHtml(doc) {
       const holder = document.createElement('div');
-      for (const node of parsed.body.childNodes) holder.appendChild(copyNode(node));
+      const imageUrl = url => typeof url === 'string' && /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
+      const clamp = (value, fallback, min=0, max=100) => {
+        const n=Number(value);return Math.min(max,Math.max(min,Number.isFinite(n)?n:fallback));
+      };
+      function build(node) {
+        if (!node || typeof node !== 'object') return document.createDocumentFragment();
+        if (node.type === 'farmImage') {
+          const a=node.attrs||{};
+          if (!imageUrl(a.src)) return document.createDocumentFragment();
+          const figure=document.createElement('figure');
+          figure.classList.add('farm-inline-image');
+          for(const [key,valid] of Object.entries({size:['small','medium','large','full'],align:['left','center','right'],wrap:['none','left','right']})) {
+            const fallback={size:'large',align:'center',wrap:'none'}[key];
+            figure.classList.add(`farm-${key}-${valid.includes(a[key])?a[key]:fallback}`);
+          }
+          figure.style.setProperty('--farm-width',`${clamp(a.widthPct,100,15)}%`);
+          figure.style.setProperty('--farm-crop',`${clamp(a.crop,100,10)}%`);
+          figure.style.setProperty('--farm-crop-x',`${clamp(a.cropX,50)}%`);
+          figure.style.setProperty('--farm-crop-y',`${clamp(a.cropY,50)}%`);
+          const rotation=Number(a.rotation);
+          figure.style.setProperty('--farm-rotation',`${[0,90,180,270].includes(rotation)?rotation:0}deg`);
+          const windowEl=document.createElement('div');windowEl.className='farm-image-window';
+          const img=document.createElement('img');img.src=a.src;img.alt=String(a.alt||'');img.loading='lazy';
+          windowEl.appendChild(img);
+          const caption=document.createElement('figcaption');caption.textContent=String(a.caption||'');
+          figure.append(windowEl,caption);return figure;
+        }
+        if(node.type==='text') {
+          let text=document.createTextNode(String(node.text||''));
+          for(const mark of node.marks||[]) {
+            const tag={bold:'strong',italic:'em',underline:'u',strike:'s',code:'code'}[mark.type];
+            if(tag){const wrapper=document.createElement(tag);wrapper.appendChild(text);text=wrapper;}
+          }
+          return text;
+        }
+        const tags={doc:null,paragraph:'p',heading:'h2',bulletList:'ul',orderedList:'ol',listItem:'li',blockquote:'blockquote',horizontalRule:'hr',hardBreak:'br'};
+        if(!Object.prototype.hasOwnProperty.call(tags,node.type)) return document.createDocumentFragment();
+        let tag=tags[node.type];
+        if(node.type==='heading'&&[2,3,4].includes(Number(node.attrs?.level)))tag=`h${node.attrs.level}`;
+        const el=tag?document.createElement(tag):document.createDocumentFragment();
+        if(['paragraph','heading'].includes(node.type)) {
+          const a=node.attrs||{};
+          if(['left','center','right','justify'].includes(a.textAlign))el.style.textAlign=a.textAlign;
+          if(['1.2','1.4','1.65','2'].includes(String(a.lineHeight)))el.style.lineHeight=String(a.lineHeight);
+          const indent=clamp(parseInt(a.indent,10)||0,0,0,4);
+          if(indent)el.style.marginLeft=`${indent*1.5}rem`;
+        }
+        for(const child of node.content||[])el.appendChild(build(child));
+        return el;
+      }
+      holder.appendChild(build(doc));
       return holder.innerHTML;
     }
 
@@ -739,7 +752,7 @@ updateWordCount();
       const title = escapePreviewText(titleField.value.trim() || 'Untitled draft');
       const category = escapePreviewText(categoryField.value.trim());
       const excerpt = escapePreviewText(excerptField.value.trim());
-      const content = safePreviewHtml(editor.getHTML());
+      const content = safePreviewHtml(editor.getJSON());
       const html = `<!doctype html><html lang="${language}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer"><title>Draft Preview — ${title}</title>
@@ -750,7 +763,7 @@ main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12p
 h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}
 .article{margin-top:32px}.article h2,.article h3,.article h4{line-height:1.3;margin-top:1.8em}.article blockquote{border-left:4px solid #9b7453;padding-left:18px;margin-left:0;color:#555}
 .article p{margin:1em 0}.article li{margin:.3em 0}
-.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
+.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto;transform:rotate(var(--farm-rotation,0deg))}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
 </style></head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
 <main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
 <div class="article">${content}</div></main></body></html>`;
