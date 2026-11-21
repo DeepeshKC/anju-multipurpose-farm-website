@@ -262,6 +262,20 @@ const FarmImage = Node.create({
 
 const section = document.getElementById('cms-section');
 const mount = document.getElementById('cms-rich-editor');
+// Make saved hyperlinks visible while editing, not only in preview.
+const cmsLinkStyle = document.createElement('style');
+cmsLinkStyle.textContent = `
+  #cms-editor .ProseMirror a[href],
+  #cms-editor-mount .ProseMirror a[href],
+  .ProseMirror a[href] {
+    color: #1769aa;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: text;
+  }
+`;
+document.head.appendChild(cmsLinkStyle);
+
 const toolbar = document.getElementById('cms-toolbar');
 const form = document.getElementById('cms-form');
 const newButton = document.getElementById('cms-new');
