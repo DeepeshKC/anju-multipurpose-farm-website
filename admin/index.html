@@ -230,9 +230,16 @@
   <script>
     // Admin dashboard should open at the beginning, not a restored lower section.
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
-    window.addEventListener('pageshow', () => {
-      if (!location.hash) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    });
+    // Reset after initial layout; do not reset when saving or navigating inside the CMS.
+    let initialScrollReset = false;
+    function resetInitialScroll() {
+      if (initialScrollReset || location.hash) return;
+      initialScrollReset = true;
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => window.scrollTo(0, 0));
+    }
+    window.addEventListener('load', resetInitialScroll, { once: true });
+    window.addEventListener('pageshow', resetInitialScroll, { once: true });
   </script>
 </head>
 
