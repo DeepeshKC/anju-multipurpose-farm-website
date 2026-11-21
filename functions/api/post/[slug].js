@@ -65,7 +65,9 @@ export async function onRequestGet({ env, params, request }) {
           content_format: 'html',
           language: useNepali ? 'ne' : 'en',
           requested_language: language,
-          fallback: language === 'ne' && !useNepali,
+          has_nepali_publication: false,
+        fallback: language === 'ne' && !useNepali,
+          has_nepali_publication: cms.nepali_title !== null && cms.nepali_content !== null,
           published_at: cms.published_at
         }
       });
@@ -103,6 +105,7 @@ export async function onRequestGet({ env, params, request }) {
         content_format: 'text',
         language: 'en',
         requested_language: language,
+        has_nepali_publication: false,
         fallback: language === 'ne'
       }
     });
