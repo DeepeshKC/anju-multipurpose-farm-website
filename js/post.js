@@ -32,7 +32,7 @@ function sanitizeArticleHTML(html) {
     'I',
     'BR',
     'BLOCKQUOTE',
-    'FIGURE', 'FIGCAPTION', 'IMG'
+    'FIGURE', 'FIGCAPTION', 'IMG', 'HR', 'S', 'U', 'CODE'
   ]);
 
   const blockedTags = new Set([
@@ -78,6 +78,22 @@ function sanitizeArticleHTML(html) {
       }
 
       clean(child);
+
+      // Preserve only the CMS-generated image crop window inside a figure.
+      // All other DIV elements are unwrapped as before.
+      if (child.tagName === 'DIV') {
+        const isImageWindow = child.parentElement?.tagName === 'FIGURE' &&
+          child.classList.contains('farm-image-window') &&
+          [...child.classList].every(name => name === 'farm-image-window') &&
+          child.querySelector('img') !== null;
+        if (isImageWindow) {
+          for (const attribute of [...child.attributes]) child.removeAttribute(attribute.name);
+          child.className = 'farm-image-window';
+        } else {
+          child.replaceWith(...child.childNodes);
+        }
+        continue;
+      }
 
       if (!allowedTags.has(child.tagName)) {
         child.replaceWith(...child.childNodes);
