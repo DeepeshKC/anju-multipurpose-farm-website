@@ -52,7 +52,6 @@ function sanitizeArticleHTML(html) {
     'LINK',
     'META',
     'BASE',
-    'IMG',
     'VIDEO',
     'AUDIO'
   ]);
