@@ -1640,6 +1640,21 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             publicationButtons.add(publishEnglishButton);
             item.appendChild(publishEnglishButton);
 
+            // Open the immutable published versions, not the editor preview.
+            const viewPublished = (language, caption) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.textContent = caption;
+              button.addEventListener('click', () => {
+                const url = `/post?slug=${encodeURIComponent(article.slug)}&lang=${language}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
+              });
+              item.appendChild(button);
+            };
+            if (englishPublished) viewPublished('en', 'View English Article ↗');
+            if (nepaliPublished) viewPublished('ne', 'View Nepali Article ↗');
+
+
             const nepaliButton = document.createElement('button');
             nepaliButton.type = 'button';
             nepaliButton.textContent = article.nepali_translation_id
@@ -1659,6 +1674,28 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             }
 
             item.appendChild(nepaliButton);
+            if (article.nepali_translation_id && nepaliStatus === 'approved' &&
+                article.nepali_source_status === 'outdated') {
+              const revise = document.createElement('button');
+              revise.type = 'button';
+              revise.textContent = 'Start Nepali Revision';
+              revise.addEventListener('click', async () => {
+                if (!window.confirm('Start a new Nepali draft? Existing published Nepali content stays live until a new revision is reviewed and published.')) return;
+                revise.disabled = true;
+                try {
+                  const response = await fetch(`/api/admin/cms/translations/${article.id}/start-revision`, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' }, body: '{}'
+                  });
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.error || 'Unable to start Nepali revision');
+                  await loadArticles();
+                  await openNepaliDraft(article.id);
+                } catch (error) { showStatus(error.message, true); revise.disabled = false; }
+              });
+              item.appendChild(revise);
+            }
+
             if (article.nepali_translation_id) {
               const nepaliPreview=document.createElement('button');
               nepaliPreview.type='button';
