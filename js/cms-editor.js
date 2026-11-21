@@ -1551,13 +1551,31 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             });
 
             item.appendChild(englishButton);
+            const englishStatus = document.createElement('span');
+            englishStatus.textContent = ` English editorial status: ${article.english_review_status || 'draft'}`;
+            item.appendChild(englishStatus);
+            const englishReviewAction = (action,label) => {
+              const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+              btn.addEventListener('click',async()=>{
+                const notes=action==='request_changes'?window.prompt('Required English review feedback:'):'';
+                if(action==='request_changes'&&!notes?.trim())return;
+                if(!window.confirm(`${label} for English article #${article.id}?`))return;
+                try{const response=await fetch(`/api/admin/cms/articles/${article.id}/review`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,notes})});const data=await response.json();if(!response.ok)throw Error(data.error||'Review failed');await loadArticles();showStatus(`English: ${data.status}`);}catch(e){showStatus(e.message,true)}
+              });item.appendChild(btn);
+            };
+            if(['draft','changes_requested'].includes(article.english_review_status||'draft'))englishReviewAction('submit','Submit English for Review');
+            if(article.english_review_status==='submitted'){
+              englishReviewAction('approve','Approve English');
+              englishReviewAction('request_changes','Request English Changes');
+            }
+
             const englishPreview = document.createElement('button');
             englishPreview.type='button';
             englishPreview.textContent='Preview English Draft';
             englishPreview.addEventListener('click',()=>previewSavedLanguage(article.id,'en'));
             item.appendChild(englishPreview);
             const englishReviewStatus=document.createElement('span');
-            englishReviewStatus.textContent=' English workflow: direct publication (no English review/approval system configured)';
+            englishReviewStatus.textContent=' English review required before publication';
             englishReviewStatus.className='cms-card-extra';
             item.appendChild(englishReviewStatus);
 
@@ -1571,6 +1589,8 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             publishEnglishButton.addEventListener('click', () => {
               publishArticle(article.id, 'en');
             });
+            publishEnglishButton.disabled = article.english_review_status !== 'approved';
+            publishEnglishButton.title = publishEnglishButton.disabled ? 'Approval of the current English revision required' : 'Publish approved English revision';
             publicationButtons.add(publishEnglishButton);
             item.appendChild(publishEnglishButton);
 
