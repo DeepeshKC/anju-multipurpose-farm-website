@@ -1150,3 +1150,31 @@ body:has(#cms-section:not([hidden])) main {max-width:1480px;width:min(96%,1480px
 .cms-document-workbench {margin-bottom:0;}
 .farm-drop-indicator.farm-drop-indicator-caret {border-top:0;border-left:3px solid #267a57;box-shadow:0 0 0 1px white;}
 @media(max-width:760px){#cms-section #cms-rich-editor .tiptap{padding:18px!important;min-height:360px;}}
+
+/* Stage 14E: clearly identify safe published hyperlinks. */
+.blog-article-content a[href] {
+  color: #1769aa;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.blog-article-content a[href]:hover { color: #104e80; text-decoration-thickness: 2px; }
+.blog-article-content a[href]:focus-visible { outline: 2px solid #1769aa; outline-offset: 3px; }
+
+/* Keep the entire editor ribbon in view while scrolling the document. */
+#cms-section .cms-document-workbench {
+  position: sticky;
+  top: 70px;
+  z-index: 40;
+  overflow: visible;
+}
+#cms-section .cms-document-workbench #cms-toolbar,
+#cms-section .cms-document-workbench .cms-word-ribbon {
+  position: static;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  #cms-section .cms-document-workbench { top: 58px; }
+  #cms-section .cms-workbench-hint { display: none; }
+}
