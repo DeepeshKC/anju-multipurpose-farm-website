@@ -682,61 +682,48 @@ updateWordCount();
       articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // Build preview from the same JSON saved to the database. This avoids
-    // depending on the interactive NodeView's HTML serialization.
-    function safePreviewHtml(doc) {
-      const holder = document.createElement('div');
-      const imageUrl = url => typeof url === 'string' && /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(url);
-      const clamp = (value, fallback, min=0, max=100) => {
-        const n=Number(value);return Math.min(max,Math.max(min,Number.isFinite(n)?n:fallback));
-      };
-      function build(node) {
-        if (!node || typeof node !== 'object') return document.createDocumentFragment();
-        if (node.type === 'farmImage') {
-          const a=node.attrs||{};
-          if (!imageUrl(a.src)) return document.createDocumentFragment();
-          const figure=document.createElement('figure');
-          figure.classList.add('farm-inline-image');
-          for(const [key,valid] of Object.entries({size:['small','medium','large','full'],align:['left','center','right'],wrap:['none','left','right']})) {
-            const fallback={size:'large',align:'center',wrap:'none'}[key];
-            figure.classList.add(`farm-${key}-${valid.includes(a[key])?a[key]:fallback}`);
+    // TipTap StarterKit produces a limited set of nodes. Rebuild preview HTML
+    // from a strict allowlist rather than trusting arbitrary HTML strings.
+    function safePreviewHtml(rawHtml) {
+      const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
+      const allowed = new Set([
+        'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
+        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'FIGURE', 'IMG', 'FIGCAPTION'
+      ]);
+      function copyNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
+        if (node.nodeType !== Node.ELEMENT_NODE) return document.createDocumentFragment();
+        const fragment = document.createDocumentFragment();
+        const destination = allowed.has(node.tagName)
+          ? document.createElement(node.tagName.toLowerCase()) : fragment;
+        if (['P','H2','H3','H4'].includes(node.tagName)) {
+          const align=node.style.textAlign;
+          if(['left','center','right','justify'].includes(align)) destination.style.textAlign=align;
+          const line=node.style.lineHeight;
+          if(['1.2','1.4','1.65','2'].includes(line)) destination.style.lineHeight=line;
+          const indent=Math.min(4,Math.max(0,parseInt(node.dataset.indent||'0',10)||0));
+          if(indent) destination.style.marginLeft=`${indent*1.5}rem`;
+        }
+        if (node.tagName === 'IMG') {
+          const src = node.getAttribute('src') || '';
+          if (!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(src)) return fragment;
+          destination.setAttribute('src', src);
+          destination.setAttribute('alt', node.getAttribute('alt') || '');
+          destination.setAttribute('loading', 'lazy');
+        }
+        if (node.tagName === 'FIGURE') {
+          for (const key of ['widthPct','crop','cropX','cropY']) {
+            const val=Number(node.dataset[key]);
+            if(Number.isFinite(val)) destination.style.setProperty({'widthPct':'--farm-width','crop':'--farm-crop','cropX':'--farm-crop-x','cropY':'--farm-crop-y'}[key],`${val}%`);
           }
-          figure.style.setProperty('--farm-width',`${clamp(a.widthPct,100,15)}%`);
-          figure.style.setProperty('--farm-crop',`${clamp(a.crop,100,10)}%`);
-          figure.style.setProperty('--farm-crop-x',`${clamp(a.cropX,50)}%`);
-          figure.style.setProperty('--farm-crop-y',`${clamp(a.cropY,50)}%`);
-          const rotation=Number(a.rotation);
-          figure.style.setProperty('--farm-rotation',`${[0,90,180,270].includes(rotation)?rotation:0}deg`);
-          const windowEl=document.createElement('div');windowEl.className='farm-image-window';
-          const img=document.createElement('img');img.src=a.src;img.alt=String(a.alt||'');img.loading='lazy';
-          windowEl.appendChild(img);
-          const caption=document.createElement('figcaption');caption.textContent=String(a.caption||'');
-          figure.append(windowEl,caption);return figure;
-        }
-        if(node.type==='text') {
-          let text=document.createTextNode(String(node.text||''));
-          for(const mark of node.marks||[]) {
-            const tag={bold:'strong',italic:'em',underline:'u',strike:'s',code:'code'}[mark.type];
-            if(tag){const wrapper=document.createElement(tag);wrapper.appendChild(text);text=wrapper;}
-          }
-          return text;
-        }
-        const tags={doc:null,paragraph:'p',heading:'h2',bulletList:'ul',orderedList:'ol',listItem:'li',blockquote:'blockquote',horizontalRule:'hr',hardBreak:'br'};
-        if(!Object.prototype.hasOwnProperty.call(tags,node.type)) return document.createDocumentFragment();
-        let tag=tags[node.type];
-        if(node.type==='heading'&&[2,3,4].includes(Number(node.attrs?.level)))tag=`h${node.attrs.level}`;
-        const el=tag?document.createElement(tag):document.createDocumentFragment();
-        if(['paragraph','heading'].includes(node.type)) {
-          const a=node.attrs||{};
-          if(['left','center','right','justify'].includes(a.textAlign))el.style.textAlign=a.textAlign;
-          if(['1.2','1.4','1.65','2'].includes(String(a.lineHeight)))el.style.lineHeight=String(a.lineHeight);
-          const indent=clamp(parseInt(a.indent,10)||0,0,0,4);
-          if(indent)el.style.marginLeft=`${indent*1.5}rem`;
-        }
-        for(const child of node.content||[])el.appendChild(build(child));
-        return el;
+          const wrap=node.dataset.wrap;
+          if(['none','left','right'].includes(wrap)) destination.classList.add(`farm-wrap-${wrap}`);
+          const classes=(node.getAttribute('class')||'').split(/\s+/).filter(c=>/^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right))$/.test(c)); destination.classList.add(...classes); }
+        for (const child of node.childNodes) destination.appendChild(copyNode(child));
+        return destination;
       }
-      holder.appendChild(build(doc));
+      const holder = document.createElement('div');
+      for (const node of parsed.body.childNodes) holder.appendChild(copyNode(node));
       return holder.innerHTML;
     }
 
@@ -752,7 +739,7 @@ updateWordCount();
       const title = escapePreviewText(titleField.value.trim() || 'Untitled draft');
       const category = escapePreviewText(categoryField.value.trim());
       const excerpt = escapePreviewText(excerptField.value.trim());
-      const content = safePreviewHtml(editor.getJSON());
+      const content = safePreviewHtml(editor.getHTML());
       const html = `<!doctype html><html lang="${language}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer"><title>Draft Preview — ${title}</title>
@@ -763,7 +750,7 @@ main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12p
 h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}
 .article{margin-top:32px}.article h2,.article h3,.article h4{line-height:1.3;margin-top:1.8em}.article blockquote{border-left:4px solid #9b7453;padding-left:18px;margin-left:0;color:#555}
 .article p{margin:1em 0}.article li{margin:.3em 0}
-.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto;transform:rotate(var(--farm-rotation,0deg))}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
+.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
 </style></head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
 <main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
 <div class="article">${content}</div></main></body></html>`;
@@ -774,6 +761,78 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     }
 
+
+
+    // Read-only preview of the SAVED revision. Does not change the editor form.
+    async function previewSavedLanguage(id, language) {
+      if (saving || loading || submittingReview || publishing) return;
+      try {
+        const data = await getJSON(language === 'ne'
+          ? `/api/admin/cms/translations/${id}`
+          : `/api/admin/cms/articles/${id}`);
+        const saved = language === 'ne' ? data.translation : data.article;
+        if (!saved?.content_json) throw new Error('No saved draft content for this language.');
+        const title = escapePreviewText(saved.title || 'Untitled');
+        const category = escapePreviewText(saved.category || 'FARM STORIES');
+        const excerpt = escapePreviewText(saved.excerpt || '');
+        const doc = typeof saved.content_json === 'string' ? JSON.parse(saved.content_json) : saved.content_json;
+        const content = previewJsonHtml(doc);
+        const html = `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Saved Draft Preview — ${title}</title>
+<style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f8f6ef;color:#252c24;font:17px/1.75 Georgia,serif}header{padding:12px 5%;background:#6b342d;color:white;font:600 13px/1.4 Arial,sans-serif;letter-spacing:.06em}main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12px/1.5 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#7c6251}h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}.article{margin-top:32px}.article p{margin:1em 0}.article h2,.article h3,.article h4{line-height:1.3}.article blockquote{border-left:4px solid #9b7453;padding-left:18px}.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto;transform:rotate(var(--farm-rotation,0deg))}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}</style></head><body><header>SAVED DRAFT PREVIEW · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'} · NOT PUBLISHED BY THIS ACTION</header><main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p><div class="article">${content}</div></main></body></html>`;
+        const url = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+        const tab = window.open(url, '_blank');
+        if (tab) tab.opener = null;
+        else showStatus('Please allow preview pop-ups for staging.', true);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch(error) {
+        console.error('Saved draft preview failed',error);
+        showStatus(error.message,true);
+      }
+    }
+    function previewJsonHtml(doc) {
+      const root=document.createElement('div');
+      function render(node) {
+        if(!node || typeof node!=='object') return document.createDocumentFragment();
+        if(node.type==='farmImage') {
+          const a=node.attrs||{};
+          if(!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(a.src||'')) return document.createDocumentFragment();
+          const fig=document.createElement('figure');fig.className='farm-inline-image';
+          fig.classList.add('farm-align-'+(['left','right','center'].includes(a.align)?a.align:'center'));
+          fig.classList.add('farm-wrap-'+(['left','right','none'].includes(a.wrap)?a.wrap:'none'));
+          for(const [name,key,def,min,max] of [['--farm-width','widthPct',100,15,100],['--farm-crop','crop',100,10,100],['--farm-crop-x','cropX',50,0,100],['--farm-crop-y','cropY',50,0,100]]) {
+            const v=Number(a[key]);fig.style.setProperty(name,`${Math.min(max,Math.max(min,Number.isFinite(v)?v:def))}%`);
+          }
+          const rotation=Number(a.rotation);fig.style.setProperty('--farm-rotation',`${[0,90,180,270].includes(rotation)?rotation:0}deg`);
+          const frame=document.createElement('div');frame.className='farm-image-window';
+          const img=document.createElement('img');img.src=a.src;img.alt=String(a.alt||'');img.loading='lazy';frame.append(img);
+          const caption=document.createElement('figcaption');caption.textContent=String(a.caption||'');
+          fig.append(frame,caption);return fig;
+        }
+        if(node.type==='text') {
+          let el=document.createTextNode(String(node.text||''));
+          for(const mark of node.marks||[]) {
+            const tag={bold:'strong',italic:'em',underline:'u',strike:'s',code:'code'}[mark.type];
+            if(tag){const wrap=document.createElement(tag);wrap.append(el);el=wrap;}
+          }
+          return el;
+        }
+        const tags={doc:null,paragraph:'p',heading:'h2',bulletList:'ul',orderedList:'ol',listItem:'li',blockquote:'blockquote',horizontalRule:'hr',hardBreak:'br'};
+        if(!Object.prototype.hasOwnProperty.call(tags,node.type)) return document.createDocumentFragment();
+        let tag=tags[node.type];
+        if(node.type==='heading' && [2,3,4].includes(Number(node.attrs?.level))) tag=`h${node.attrs.level}`;
+        const el=tag?document.createElement(tag):document.createDocumentFragment();
+        if(node.type==='paragraph'||node.type==='heading') {
+          const attrs=node.attrs||{};
+          if(['left','right','center','justify'].includes(attrs.textAlign)) el.style.textAlign=attrs.textAlign;
+          if(['1.2','1.4','1.65','2'].includes(String(attrs.lineHeight))) el.style.lineHeight=String(attrs.lineHeight);
+          const indent=Math.min(4,Math.max(0,parseInt(attrs.indent,10)||0));
+          if(indent) el.style.marginLeft=`${indent*1.5}rem`;
+        }
+        for(const child of node.content||[]) el.append(render(child));
+        return el;
+      }
+      root.append(render(doc));return root.innerHTML;
+    }
 
     function showStatus(message, isError = false) {
       statusMessage.textContent = message;
@@ -1492,6 +1551,15 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             });
 
             item.appendChild(englishButton);
+            const englishPreview = document.createElement('button');
+            englishPreview.type='button';
+            englishPreview.textContent='Preview English Draft';
+            englishPreview.addEventListener('click',()=>previewSavedLanguage(article.id,'en'));
+            item.appendChild(englishPreview);
+            const englishReviewStatus=document.createElement('span');
+            englishReviewStatus.textContent=' English workflow: direct publication (no English review/approval system configured)';
+            englishReviewStatus.className='cms-card-extra';
+            item.appendChild(englishReviewStatus);
 
             const publishEnglishButton = document.createElement('button');
             publishEnglishButton.type = 'button';
@@ -1525,11 +1593,18 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             }
 
             item.appendChild(nepaliButton);
+            if (article.nepali_translation_id) {
+              const nepaliPreview=document.createElement('button');
+              nepaliPreview.type='button';
+              nepaliPreview.textContent='Preview Nepali Draft';
+              nepaliPreview.addEventListener('click',()=>previewSavedLanguage(article.id,'ne'));
+              item.appendChild(nepaliPreview);
+            }
 
             if (article.nepali_translation_id && nepaliStatus === 'draft') {
               const submitButton = document.createElement('button');
               submitButton.type = 'button';
-              submitButton.textContent = 'Submit for Review';
+              submitButton.textContent = 'Submit Nepali for Review';
               submitButton.addEventListener('click', () => {
                 submitNepaliForReview(article.id);
               });
@@ -1539,7 +1614,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             if (article.nepali_translation_id) {
               const translationStatus = document.createElement('span');
               translationStatus.textContent =
-                ` Nepali: ${article.nepali_status || 'draft'}`;
+                ` Nepali editorial status: ${article.nepali_status || 'draft'}`;
 
               item.appendChild(translationStatus);
 
