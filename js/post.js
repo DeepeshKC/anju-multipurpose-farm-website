@@ -148,6 +148,47 @@ function sanitizeArticleHTML(html) {
   return template.content;
 }
 
+// Keep page metadata synchronized with the language actually displayed.
+function updateArticleSEO(post) {
+  const isStaging = location.hostname !== 'www.anjumultipurposefarm.com.np' && location.hostname !== 'anjumultipurposefarm.com.np';
+  const language = post.language === 'ne' ? 'ne' : 'en';
+  const description = String(post.excerpt || '').replace(/<[^>]*>/g, '').trim().slice(0, 160) ||
+    (language === 'ne' ? 'अञ्जु फार्मका कथा र अनुभवहरू।' : 'Stories from Anju Farm in Nepal.');
+  const title = String(post.title || 'Farm Story') + ' | Anju Farm';
+  const origin = 'https://www.anjumultipurposefarm.com.np';
+  const articlePath = '/post?slug=' + encodeURIComponent(post.slug) + '&lang=';
+  const canonical = origin + articlePath + language;
+  const setMeta = (selector, attribute, value) => {
+    const el = document.querySelector(selector);
+    if (el) el.setAttribute(attribute, value);
+  };
+  const setLink = (rel, hreflang, href) => {
+    const selector = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]`;
+    let el = document.querySelector(selector);
+    if (!el) { el = document.createElement('link'); el.rel = rel; if (hreflang) el.hreflang = hreflang; document.head.append(el); }
+    el.href = href;
+  };
+  document.title = title;
+  setMeta('meta[name="description"]', 'content', description);
+  setMeta('meta[property="og:title"]', 'content', title);
+  setMeta('meta[property="og:description"]', 'content', description);
+  setMeta('meta[property="og:url"]', 'content', canonical);
+  setMeta('meta[property="og:locale"]', 'content', language === 'ne' ? 'ne_NP' : 'en_US');
+  setMeta('meta[name="twitter:title"]', 'content', title);
+  setMeta('meta[name="twitter:description"]', 'content', description);
+  if (isStaging) {
+    setMeta('meta[name="robots"]', 'content', 'noindex,nofollow');
+    document.querySelectorAll('link[rel="canonical"],link[rel="alternate"][hreflang]').forEach(el => el.remove());
+  } else {
+    setMeta('meta[name="robots"]', 'content', 'index,follow');
+    setLink('canonical', null, canonical);
+    // Don't advertise a Nepali alternate when that language is only an English fallback.
+    setLink('alternate', 'en', origin + articlePath + 'en');
+    if (post.has_nepali_publication) setLink('alternate', 'ne', origin + articlePath + 'ne');
+    else document.querySelectorAll('link[rel="alternate"][hreflang="ne"]').forEach(el => el.remove());
+  }
+}
+
 function renderPost() {
   if (!article) return;
 
@@ -169,8 +210,7 @@ function renderPost() {
 
   const p = loadedPost;
 
-  document.title =
-    p.title + ' | ' + (ne ? 'अञ्जु फार्म' : 'Anju Farm');
+  updateArticleSEO(p);
 
   document.documentElement.lang = p.language === 'ne' ? 'ne' : 'en';
 
