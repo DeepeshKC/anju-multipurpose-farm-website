@@ -1,3 +1,20 @@
-import {reply,guard,sameOrigin,safeJson,validatePost} from '../../../_shared.js';
-export async function onRequestGet(ctx){const denied=await guard(ctx);if(denied)return denied;const {results}=await ctx.env.DB.prepare('SELECT * FROM posts ORDER BY updated_at DESC LIMIT 200').all();return reply({posts:results});}
-export async function onRequestPost(ctx){const denied=await guard(ctx);if(denied)return denied;if(!sameOrigin(ctx.request))return reply({error:'Invalid origin'},403);const p=await safeJson(ctx.request),error=validatePost(p);if(error)return reply({error},400);try{const r=await ctx.env.DB.prepare("INSERT INTO posts(slug,title,excerpt,content,category,status,published_at) VALUES(?,?,?,?,?,?,CASE WHEN ?='published' THEN datetime('now') ELSE NULL END)").bind(p.slug,p.title.trim(),p.excerpt,p.content,p.category,p.status,p.status).run();return reply({id:r.meta.last_row_id},201)}catch(e){return reply({error:'Slug already exists or database error'},409)}}
+import { reply, guard, sameOrigin } from '../../../_shared.js';
+
+// Legacy read endpoint retained for compatibility with existing admin views.
+export async function onRequestGet(ctx) {
+  const denied = await guard(ctx);
+  if (denied) return denied;
+  if (!ctx.env.DB) return reply({ error: 'Database unavailable' }, 503);
+  const { results } = await ctx.env.DB.prepare(
+    'SELECT * FROM posts ORDER BY updated_at DESC LIMIT 200'
+  ).all();
+  return reply({ posts: results });
+}
+
+// All new articles must use the bilingual CMS editorial workflow.
+export async function onRequestPost(ctx) {
+  const denied = await guard(ctx);
+  if (denied) return denied;
+  if (!sameOrigin(ctx.request)) return reply({ error: 'Invalid origin' }, 403);
+  return reply({ error: 'Legacy article creation is disabled. Use the bilingual CMS.' }, 410);
+}
