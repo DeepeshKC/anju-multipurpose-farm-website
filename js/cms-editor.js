@@ -1,3 +1,14 @@
+function safeArticleLink(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' && u.hostname && !u.username && !u.password) return u.href;
+    if (u.protocol === 'mailto:' && /^mailto:[^\s@?]+@[^\s@?]+(?:\?[^\s]*)?$/i.test(raw)) return raw;
+  } catch (_) {}
+  return null;
+}
+
 
 import { Editor, StarterKit, Node } from './tiptap-bundle.js';
 
@@ -271,7 +282,7 @@ if (!section || !mount || !toolbar || !form ||
         ArticleLayout,
         StarterKit.configure({
           heading: { levels: [2, 3, 4] },
-          link: false,
+          link: { openOnClick: false, autolink: false },
           codeBlock: false
         })
       ],
@@ -303,6 +314,17 @@ updateWordCount();
   ['H4', () => editor.chain().focus().toggleHeading({ level: 4 }).run()],
   ['Bold', () => editor.chain().focus().toggleBold().run()],
   ['Italic', () => editor.chain().focus().toggleItalic().run()],
+  ['Insert / edit link', () => {
+    const current = editor.getAttributes('link').href || '';
+    const input = window.prompt('Link URL (https://, /page, or mailto:). Leave blank to remove:', current);
+    if (input === null) return;
+    if (!input.trim()) { editor.chain().focus().unsetLink().run(); return; }
+    const href = safeArticleLink(input.trim());
+    if (!href) { window.alert('Only HTTPS, internal /path, and mailto: links are allowed.'); return; }
+    if (editor.state.selection.empty && !editor.isActive('link')) { window.alert('Select the text to link first.'); return; }
+    editor.chain().focus().extendMarkRange('link').setLink({ href, target: href.startsWith('https:') ? '_blank' : null, rel: 'noopener noreferrer' }).run();
+  }],
+  ['Remove link', () => editor.chain().focus().unsetLink().run()],
   ['Underline', () => editor.chain().focus().toggleUnderline().run()],
   ['Strike', () => editor.chain().focus().toggleStrike().run()],
   ['Inline code', () => editor.chain().focus().toggleCode().run()],
@@ -688,7 +710,7 @@ updateWordCount();
       const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
       const allowed = new Set([
         'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
-        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'FIGURE', 'IMG', 'FIGCAPTION'
+        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'A', 'FIGURE', 'IMG', 'FIGCAPTION'
       ]);
       function copyNode(node) {
         if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
@@ -703,6 +725,12 @@ updateWordCount();
           if(['1.2','1.4','1.65','2'].includes(line)) destination.style.lineHeight=line;
           const indent=Math.min(4,Math.max(0,parseInt(node.dataset.indent||'0',10)||0));
           if(indent) destination.style.marginLeft=`${indent*1.5}rem`;
+        }
+        if (node.tagName === 'A') {
+          const href = safeArticleLink(node.getAttribute('href') || '');
+          if (!href) return document.createTextNode(node.textContent || '');
+          destination.setAttribute('href', href);
+          if (href.startsWith('https:')) { destination.setAttribute('target', '_blank'); destination.setAttribute('rel', 'noopener noreferrer'); }
         }
         if (node.tagName === 'IMG') {
           const src = node.getAttribute('src') || '';
@@ -813,6 +841,10 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
           for(const mark of node.marks||[]) {
             const tag={bold:'strong',italic:'em',underline:'u',strike:'s',code:'code'}[mark.type];
             if(tag){const wrap=document.createElement(tag);wrap.append(el);el=wrap;}
+            if(mark.type==='link') {
+              const href=safeArticleLink(mark.attrs?.href || '');
+              if(href) {const a=document.createElement('a');a.href=href;if(href.startsWith('https:')){a.target='_blank';a.rel='noopener noreferrer';}a.append(el);el=a;}
+            }
           }
           return el;
         }

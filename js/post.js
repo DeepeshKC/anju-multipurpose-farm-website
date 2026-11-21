@@ -1,3 +1,14 @@
+function safeArticleLink(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' && u.hostname && !u.username && !u.password) return u.href;
+    if (u.protocol === 'mailto:' && /^mailto:[^\s@?]+@[^\s@?]+(?:\?[^\s]*)?$/i.test(raw)) return raw;
+  } catch (_) {}
+  return null;
+}
+
 
 const article = document.getElementById('post');
 
@@ -32,7 +43,7 @@ function sanitizeArticleHTML(html) {
     'I',
     'BR',
     'BLOCKQUOTE',
-    'FIGURE', 'FIGCAPTION', 'IMG', 'HR', 'S', 'U', 'CODE'
+    'FIGURE', 'FIGCAPTION', 'IMG', 'HR', 'S', 'U', 'CODE', 'A'
   ]);
 
   const blockedTags = new Set([
@@ -101,6 +112,7 @@ function sanitizeArticleHTML(html) {
       }
 
       // Keep only safe Cloudinary image URLs and accessibility metadata.
+      const href = child.tagName === 'A' ? safeArticleLink(child.getAttribute('href') || '') : null;
       const src = child.tagName === 'IMG' ? child.getAttribute('src') : null;
       const alt = child.tagName === 'IMG' ? child.getAttribute('alt') : null;
       const figureData = child.tagName === 'FIGURE' ? {
@@ -115,6 +127,11 @@ function sanitizeArticleHTML(html) {
           const val = figureData[key];
           if (Number.isInteger(val) && val >= min && val <= max) child.style.setProperty({widthPct:'--farm-width',crop:'--farm-crop',cropX:'--farm-crop-x',cropY:'--farm-crop-y'}[key], `${val}%`);
         }
+      }
+      if (child.tagName === 'A') {
+        if (!href) { child.replaceWith(...child.childNodes); continue; }
+        child.setAttribute('href', href);
+        if (href.startsWith('https:')) { child.setAttribute('target', '_blank'); child.setAttribute('rel', 'noopener noreferrer'); }
       }
       if (child.tagName === 'IMG') {
         if (!src || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src)) {
