@@ -1,3 +1,14 @@
+function safeArticleLink(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' && u.hostname && !u.username && !u.password) return u.href;
+    if (u.protocol === 'mailto:' && /^mailto:[^\s@?]+@[^\s@?]+(?:\?[^\s]*)?$/i.test(raw)) return raw;
+  } catch (_) {}
+  return null;
+}
+
 
 import { reply, guard, sameOrigin, safeJson } from '../../../_shared.js';
 
@@ -108,7 +119,7 @@ const escapeHtml = (value) => String(value).replace(/[&<>"']/g, ch => ({
 }[ch]));
 
 const allowedMarks = new Set([
-  'bold', 'italic', 'strike', 'code', 'underline'
+  'bold', 'italic', 'strike', 'code', 'underline', 'link'
 ]);
 
 const markTags = {
@@ -188,6 +199,13 @@ export function renderDocument(doc) {
           throw new Error('Unsupported text formatting');
         }
 
+        if (mark.type === 'link') {
+          const href = safeArticleLink(mark.attrs?.href);
+          if (!href) throw new Error('Unsafe or invalid hyperlink');
+          const external = href.startsWith('https:');
+          html = `<a href="${escapeHtml(href)}"${external ? ' target="_blank" rel="noopener noreferrer"' : ''}>${html}</a>`;
+          continue;
+        }
         const tag = markTags[mark.type];
         html = `<${tag}>${html}</${tag}>`;
       }
