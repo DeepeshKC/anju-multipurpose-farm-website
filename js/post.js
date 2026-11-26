@@ -168,6 +168,9 @@ function updateArticleSEO(post) {
     if (!el) { el = document.createElement('link'); el.rel = rel; if (hreflang) el.hreflang = hreflang; document.head.append(el); }
     el.href = href;
   };
+  const image = /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(post.social_image || '') ? post.social_image : origin + '/images/anju-farm-social-preview.jpg';
+  setMeta('meta[property="og:image"]', 'content', image);
+  setMeta('meta[name="twitter:image"]', 'content', image);
   document.title = title;
   setMeta('meta[name="description"]', 'content', description);
   setMeta('meta[property="og:title"]', 'content', title);
