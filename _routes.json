@@ -4,7 +4,8 @@
     "/api/*",
     "/sitemap.xml",
     "/post",
-    "/post.html"
+    "/post.html",
+    "/robots.txt"
   ],
   "exclude": []
 }
