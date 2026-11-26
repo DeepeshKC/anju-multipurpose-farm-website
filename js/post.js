@@ -324,4 +324,10 @@ if (requestedLanguage === 'en' || requestedLanguage === 'ne') {
 
 document.addEventListener('anju-language-change', loadPost);
 
-loadPost();
+// The server already rendered the requested published revision. Keep it visible
+// on first load; the existing language-change handler loads another revision.
+if (article?.dataset.renderedLanguage === lang()) {
+  document.documentElement.lang = article.dataset.contentLanguage === 'ne' ? 'ne' : 'en';
+} else {
+  loadPost();
+}
