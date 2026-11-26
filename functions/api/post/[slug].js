@@ -24,7 +24,9 @@ export async function onRequestGet({ env, params, request }) {
         en.language_published_at AS published_at,
         nr.title AS nepali_title,
         nr.excerpt AS nepali_excerpt,
-        nr.content_html AS nepali_content
+        nr.content_html AS nepali_content,
+        (SELECT m.secure_url FROM cloudinary_publication_media pm JOIN cloudinary_media m ON m.id = pm.media_id WHERE pm.language = 'en' AND pm.publication_revision_id = er.id AND pm.role = 'featured' ORDER BY pm.position, pm.id LIMIT 1) AS english_image,
+        (SELECT m.secure_url FROM cloudinary_publication_media pm JOIN cloudinary_media m ON m.id = pm.media_id WHERE pm.language = 'ne' AND pm.publication_revision_id = nr.id AND pm.role = 'featured' ORDER BY pm.position, pm.id LIMIT 1) AS nepali_image
 
       FROM posts p
 
@@ -65,8 +67,8 @@ export async function onRequestGet({ env, params, request }) {
           content_format: 'html',
           language: useNepali ? 'ne' : 'en',
           requested_language: language,
-          has_nepali_publication: false,
-        fallback: language === 'ne' && !useNepali,
+          social_image: useNepali ? cms.nepali_image : cms.english_image,
+          fallback: language === 'ne' && !useNepali,
           has_nepali_publication: cms.nepali_title !== null && cms.nepali_content !== null,
           published_at: cms.published_at
         }
