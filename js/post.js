@@ -176,17 +176,12 @@ function updateArticleSEO(post) {
   setMeta('meta[property="og:locale"]', 'content', language === 'ne' ? 'ne_NP' : 'en_US');
   setMeta('meta[name="twitter:title"]', 'content', title);
   setMeta('meta[name="twitter:description"]', 'content', description);
-  if (isStaging) {
-    setMeta('meta[name="robots"]', 'content', 'noindex,nofollow');
-    document.querySelectorAll('link[rel="canonical"],link[rel="alternate"][hreflang]').forEach(el => el.remove());
-  } else {
-    setMeta('meta[name="robots"]', 'content', 'index,follow');
-    setLink('canonical', null, canonical);
-    // Don't advertise a Nepali alternate when that language is only an English fallback.
-    setLink('alternate', 'en', origin + articlePath + 'en');
-    if (post.has_nepali_publication) setLink('alternate', 'ne', origin + articlePath + 'ne');
-    else document.querySelectorAll('link[rel="alternate"][hreflang="ne"]').forEach(el => el.remove());
-  }
+  setMeta('meta[name="robots"]', 'content', isStaging ? 'noindex,nofollow' : 'index,follow');
+  setLink('canonical', null, canonical);
+  setLink('alternate', 'en', origin + articlePath + 'en');
+  // Only advertise a genuinely published Nepali translation.
+  if (post.has_nepali_publication) setLink('alternate', 'ne', origin + articlePath + 'ne');
+  else document.querySelectorAll('link[rel="alternate"][hreflang="ne"]').forEach(el => el.remove());
 }
 
 function renderPost() {
