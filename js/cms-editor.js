@@ -1890,6 +1890,18 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
     newButton.addEventListener('click', openNewDraft);
 
+    const saveFeedback = document.createElement('span');
+    saveFeedback.setAttribute('role', 'status');
+    saveFeedback.setAttribute('aria-live', 'polite');
+    saveFeedback.style.display = 'block';
+    saveButton.after(saveFeedback);
+    function showSaveFeedback(message, isError = false) {
+      saveFeedback.textContent = message;
+      saveFeedback.className = isError ? 'admin-error' : 'admin-note';
+    }
+    form.addEventListener('input', () => { if (!saving) saveFeedback.textContent = ''; });
+    editor.on('update', () => { if (!saving) saveFeedback.textContent = ''; });
+
     form.addEventListener('submit', async event => {
       event.preventDefault();
 
@@ -1897,6 +1909,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       if (!form.reportValidity()) return;
 
       if (editor.isEmpty) {
+        showSaveFeedback('Please enter article content.', true);
         showStatus('Please enter article content.', true);
         editor.commands.focus();
         return;
@@ -1923,6 +1936,8 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       }
 
       saving = true;
+      saveButton.textContent = isEditing ? 'Updating…' : 'Saving…';
+      showSaveFeedback('Saving draft…');
       saveButton.disabled = true;
       newButton.disabled = true;
 
@@ -1978,6 +1993,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         recordEditorSnapshot();
 
         showStatus(`${savedLanguage} draft #${savedId} saved successfully.`);
+        showSaveFeedback(`${savedLanguage} draft saved successfully.`);
         console.log('CMS draft saved:', result);
 
         const previousScroll = window.scrollY;
@@ -1988,9 +2004,11 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       } catch (error) {
         console.error('CMS draft saving failed:', error);
         showStatus(error.message, true);
+        showSaveFeedback(error.message, true);
 
       } finally {
         saving = false;
+        saveButton.textContent = editingLanguage === 'ne' ? 'Save Nepali draft' : editingId !== null ? 'Update English draft' : 'Save English draft';
         newButton.disabled = false;
         saveButton.disabled = form.hidden;
       }
