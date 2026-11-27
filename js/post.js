@@ -1,3 +1,22 @@
+// Transform only original, versioned Cloudinary image URLs. Preserve stored originals.
+function deliveryAttrs(src, dimensions, priority = false) {
+  const match = /^(https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/)(v[0-9]+\/[a-zA-Z0-9_./-]+)$/.exec(src);
+  const attrs = {src, loading: priority ? 'eager' : 'lazy', decoding: 'async'};
+  if (priority) attrs.fetchpriority = 'high';
+  const d = dimensions?.find(x => x.secure_url === src);
+  if (d && Number.isSafeInteger(d.width) && Number.isSafeInteger(d.height) && d.width > 0 && d.height > 0) {
+    attrs.width = String(d.width); attrs.height = String(d.height);
+  }
+  if (match) {
+    const limit = Math.min(d?.width || 1600, 1600);
+    const widths = [...new Set([480, 768, 1024, 1280, 1600].map(w => Math.min(w, limit)))];
+    const variant = w => `${match[1]}f_auto,q_auto,c_limit,w_${w}/${match[2]}`;
+    attrs.src = variant(Math.min(768, limit));
+    attrs.srcset = widths.map(w => `${variant(w)} ${w}w`).join(', ');
+    attrs.sizes = '(max-width: 850px) 88vw, 750px';
+  }
+  return attrs;
+}
 function formatNepaliDate(d) {
   const parts = new Intl.DateTimeFormat('en-US', {year:'numeric',month:'numeric',day:'numeric',timeZone:'Asia/Kathmandu'}).formatToParts(d);
   const part = type => parts.find(p => p.type === type).value;
@@ -32,7 +51,8 @@ let postError = false;
 let requestNumber = 0;
 
 // Sanitize published CMS HTML before inserting it into the page.
-function sanitizeArticleHTML(html) {
+function sanitizeArticleHTML(html, dimensions = []) {
+  let firstImage = true;
   const template = document.createElement('template');
   template.innerHTML = String(html ?? '');
 
@@ -144,9 +164,9 @@ function sanitizeArticleHTML(html) {
         if (!src || !/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src)) {
           child.remove(); continue;
         }
-        child.setAttribute('src', src);
+        for (const [key,value] of Object.entries(deliveryAttrs(src, dimensions, firstImage))) child.setAttribute(key,value);
+        firstImage = false;
         child.setAttribute('alt', alt || '');
-        child.setAttribute('loading', 'lazy');
       }
     }
   }
@@ -260,7 +280,7 @@ function renderPost() {
   content.className = 'blog-article-content';
 
   if (p.content_format === 'html') {
-    content.append(sanitizeArticleHTML(p.content));
+    content.append(sanitizeArticleHTML(p.content, p.image_dimensions));
   } else {
     const paragraphs = String(p.content ?? '')
       .split(/\n\s*\n/)
@@ -274,7 +294,7 @@ function renderPost() {
   }
 
   if (/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(p.social_image || '')) {
-    const cover=document.createElement('img');cover.className='blog-featured-image';cover.src=p.social_image;cover.alt=p.featured_alt||'';article.append(cover);
+    const cover=document.createElement('img');cover.className='blog-featured-image';for (const [key,value] of Object.entries(deliveryAttrs(p.social_image,p.image_dimensions,true))) cover.setAttribute(key,value);cover.alt=p.featured_alt||'';article.append(cover);
   }
   article.append(content);
 }
