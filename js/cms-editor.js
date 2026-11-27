@@ -1890,11 +1890,15 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
     newButton.addEventListener('click', openNewDraft);
 
+    const saveCloseButton = document.createElement('button');
+    saveCloseButton.type = 'submit';
+    saveCloseButton.textContent = 'Save & Close';
+    saveButton.after(saveCloseButton);
     const saveFeedback = document.createElement('span');
     saveFeedback.setAttribute('role', 'status');
     saveFeedback.setAttribute('aria-live', 'polite');
     saveFeedback.style.display = 'block';
-    saveButton.after(saveFeedback);
+    saveCloseButton.after(saveFeedback);
     function showSaveFeedback(message, isError = false) {
       saveFeedback.textContent = message;
       saveFeedback.className = isError ? 'admin-error' : 'admin-note';
@@ -1907,6 +1911,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
       if (saving || loading || submittingReview || publishing) return;
       if (!form.reportValidity()) return;
+      const closeAfterSave = event.submitter === saveCloseButton;
 
       if (editor.isEmpty) {
         showSaveFeedback('Please enter article content.', true);
@@ -1935,9 +1940,11 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         }
       }
 
+      const submittedSnapshot = currentEditorSnapshot();
       saving = true;
       saveButton.textContent = isEditing ? 'Updating…' : 'Saving…';
       showSaveFeedback('Saving draft…');
+      saveCloseButton.disabled = true;
       saveButton.disabled = true;
       newButton.disabled = true;
 
@@ -1990,7 +1997,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
           categoryField.readOnly = true;
         }
         saveButton.textContent = isNepali ? 'Save Nepali draft' : 'Update English draft';
-        recordEditorSnapshot();
+        savedEditorSnapshot = submittedSnapshot;
 
         showStatus(`${savedLanguage} draft #${savedId} saved successfully.`);
         showSaveFeedback(`${savedLanguage} draft saved successfully.`);
@@ -1998,8 +2005,15 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
         const previousScroll = window.scrollY;
         await loadArticles();
-        // Re-rendering the list must not move the reader away from their work.
-        requestAnimationFrame(() => window.scrollTo({ top: previousScroll, left: 0, behavior: 'instant' }));
+        if (closeAfterSave && currentEditorSnapshot() === savedEditorSnapshot) {
+          clearForm();
+          form.hidden = true;
+          previewButton.disabled = true;
+          showStatus(`${savedLanguage} draft #${savedId} saved successfully. Editor closed.`);
+          articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          requestAnimationFrame(() => window.scrollTo({ top: previousScroll, left: 0, behavior: 'instant' }));
+        }
 
       } catch (error) {
         console.error('CMS draft saving failed:', error);
@@ -2008,6 +2022,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
       } finally {
         saving = false;
+        saveCloseButton.disabled = false;
         saveButton.textContent = editingLanguage === 'ne' ? 'Save Nepali draft' : editingId !== null ? 'Update English draft' : 'Save English draft';
         newButton.disabled = false;
         saveButton.disabled = form.hidden;
