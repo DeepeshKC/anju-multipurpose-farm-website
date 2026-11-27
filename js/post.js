@@ -1,3 +1,10 @@
+function formatNepaliDate(d) {
+  const parts = new Intl.DateTimeFormat('en-US', {year:'numeric',month:'numeric',day:'numeric',timeZone:'Asia/Kathmandu'}).formatToParts(d);
+  const part = type => parts.find(p => p.type === type).value;
+  const months = ['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'];
+  const digits = v => String(v).replace(/[0-9]/g, n => '०१२३४५६७८९'[Number(n)]);
+  return `${digits(part('day'))} ${months[Number(part('month'))-1]} ${digits(part('year'))}`;
+}
 function safeArticleLink(raw) {
   if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
   if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
@@ -227,6 +234,16 @@ function renderPost() {
   heading.textContent = p.title ?? '';
 
   article.replaceChildren(back, category, heading);
+  const byline = document.createElement('p'); byline.className = 'blog-byline';
+  const isNe = p.language === 'ne';
+  byline.textContent = p.author || (isNe ? 'अञ्जु बहुउद्देश्यीय कृषि फार्म' : 'Anju Multipurpose Agriculture Farm');
+  const date = v => {const d=new Date(String(v||'').replace(' ','T')+'Z');return Number.isFinite(d.getTime())?d:null;};
+  const fmt = d => isNe ? formatNepaliDate(d) : new Intl.DateTimeFormat('en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(d);
+  const pub=date(p.published_at), mod=date(p.modified_at);
+  function addDate(label,d){const t=document.createElement('time');t.dateTime=d.toISOString();t.textContent=fmt(d);byline.append(document.createTextNode(' · '+label+' '),t);}
+  if(pub)addDate(isNe?'प्रकाशित':'Published',pub);
+  if(mod&&(!pub||fmt(pub)!==fmt(mod)))addDate(isNe?'अद्यावधिक':'Updated',mod);
+  article.append(byline);
 
   // Show a notice when Nepali was requested but English is displayed.
   if (ne && p.fallback) {
