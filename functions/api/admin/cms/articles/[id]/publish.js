@@ -49,6 +49,7 @@ export async function onRequestPost(ctx) {
               WHERE r.translation_id = post_translations.id
                 AND r.source_version = ?
             ),
+            first_published_at = COALESCE(first_published_at, CASE WHEN language_published_at IS NULL THEN datetime('now') END),
             language_published_at = CASE
               WHEN published_english_revision_id = (
                 SELECT r.id FROM english_publication_revisions r
