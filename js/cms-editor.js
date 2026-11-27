@@ -682,7 +682,8 @@ updateWordCount();
 
     let featured = null;
     const featuredBox = document.createElement('fieldset');
-    featuredBox.innerHTML = '<legend>Featured image</legend><p>Choose the cover photograph for this language. It is separate from inline images.</p><button type="button" data-choose>Choose photograph</button> <button type="button" data-remove>Remove</button><p data-status></p><img data-preview hidden style="max-width:240px;height:auto">';
+    featuredBox.className = 'cms-cover-settings';
+    featuredBox.innerHTML = '<legend>Featured image</legend><p>Choose the cover photograph for this language. It is separate from inline images.</p><button type="button" data-choose>Choose photograph</button> <button type="button" data-remove>Remove</button><p data-status></p><img data-preview hidden style="width:100%;max-width:480px;height:auto">';
     titleField.parentElement.after(featuredBox);
     const coverPreview=featuredBox.querySelector('[data-preview]');
     function setFeatured(value){
@@ -694,11 +695,14 @@ updateWordCount();
     featuredBox.querySelector('[data-remove]').onclick=()=>setFeatured(null);
     featuredBox.querySelector('[data-choose]').onclick=async()=>{
       const dialog=document.createElement('dialog');
+      dialog.className='cms-cover-picker';
+      dialog.setAttribute('aria-label','Choose featured photograph');
+      const heading=document.createElement('h2');heading.textContent='Choose featured photograph';dialog.append(heading);
       const close=document.createElement('button');close.type='button';close.textContent='Cancel';close.onclick=()=>dialog.close();dialog.append(close);
       const gallery=document.createElement('div');gallery.className='cms-image-gallery';dialog.append(gallery);
       document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
       try{const data=await getJSON('/api/admin/media');for(const m of data.items||[]){
-        const b=document.createElement('button');b.type='button';b.className='cms-image-tile';const img=document.createElement('img');img.src=m.secure_url;img.alt=m.alt_en||'Photograph';img.style.maxWidth='140px';b.append(img,document.createTextNode('Photo #'+m.id));gallery.append(b);
+        const b=document.createElement('button');b.type='button';b.className='cms-image-tile';const img=document.createElement('img');img.src=m.secure_url;img.alt=m.alt_en||'Photograph';img.loading='lazy';b.append(img,document.createTextNode('Photo #'+m.id));gallery.append(b);
         b.onclick=()=>{setFeatured({mediaId:m.id,src:m.secure_url,alt_en:m.alt_en,alt_ne:m.alt_ne});dialog.close();};
       }if(!gallery.children.length)gallery.textContent='No photographs available.';}catch(e){gallery.textContent=e.message;}
     };
