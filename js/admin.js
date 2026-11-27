@@ -1,12 +1,75 @@
-const $=id=>document.getElementById(id);let posts=[],editing=null;
-function notice(s,error=false){$('notice').textContent=s;$('notice').className=error?'admin-error':'admin-note';}
-async function api(url,options={}){const r=await fetch(url,{credentials:'same-origin',...options});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Request failed');return data;}
-function show(auth){$('login-section').hidden=auth;$('editor-section').hidden=!auth;}
-async function refresh(){const data=await api('/api/admin/posts');posts=data.posts;$('posts-list').replaceChildren();for(const p of posts){const li=document.createElement('li'),button=document.createElement('button');button.textContent='Edit';button.onclick=()=>edit(p);li.append(document.createTextNode(p.title+' ('+p.status+') '),button);$('posts-list').append(li);}}
-function edit(p=null){editing=p?.id??null;for(const key of ['title','slug','category','excerpt','content','status'])$(key).value=p?.[key]??(key==='category'?'FARM STORIES':key==='status'?'draft':'');$('editor-heading').textContent=p?'Edit article':'New article';$('delete-post').hidden=!p;notice('');}
-$('new-post').onclick=()=>edit();
-$('login-form').onsubmit=async e=>{e.preventDefault();try{await api('/api/admin/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:$('password').value})});$('password').value='';show(true);await refresh();notice('Signed in.');}catch(err){notice(err.message,true);}};
-$('logout').onclick=async()=>{await api('/api/admin/logout',{method:'POST'});show(false);notice('Signed out.');};
-$('post-form').onsubmit=async e=>{e.preventDefault();const p=Object.fromEntries(['title','slug','category','excerpt','content','status'].map(k=>[k,$(k).value]));try{await api(editing?'/api/admin/posts/'+editing:'/api/admin/posts',{method:editing?'PUT':'POST',headers:{'content-type':'application/json'},body:JSON.stringify(p)});await refresh();edit();notice('Article saved.');}catch(err){notice(err.message,true);}};
-$('delete-post').onclick=async()=>{if(!editing||!confirm('Permanently delete this article?'))return;try{await api('/api/admin/posts/'+editing,{method:'DELETE'});await refresh();edit();notice('Article deleted.');}catch(err){notice(err.message,true);}};
-(async()=>{try{const s=await api('/api/admin/session');show(s.authenticated);if(s.authenticated)await refresh();}catch{show(false);notice('Cannot reach blog API. Check Cloudflare setup.',true);}})();
+// Anju Farm staging: one authentication controller, no legacy post API calls.
+(() => {
+  'use strict';
+  const el = id => document.getElementById(id);
+  const notice = (message, error = false) => {
+    const target = el('notice');
+    if (!target) return;
+    target.textContent = message;
+    target.className = error ? 'admin-error' : 'admin-note';
+  };
+  async function request(url, options = {}) {
+    let response;
+    try { response = await fetch(url, { credentials: 'same-origin', ...options }); }
+    catch { throw new Error('Unable to connect to the administration API.'); }
+    const raw = await response.text();
+    let data;
+    try { data = raw ? JSON.parse(raw) : {}; }
+    catch { throw new Error(`API returned an unexpected response (HTTP ${response.status}).`); }
+    if (!response.ok) throw new Error(data.error || `Request failed (HTTP ${response.status})`);
+    return data;
+  }
+  function show(authenticated) {
+    el('login-section').hidden = authenticated;
+    el('cms-section').hidden = !authenticated;
+    el('editor-section').hidden = true;
+  }
+  let pending = false;
+  el('login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    if (pending) return;
+    pending = true;
+    const button = el('login-form').querySelector('[type="submit"]');
+    if (button) button.disabled = true;
+    notice('Signing in…');
+    try {
+      await request('/api/admin/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ password: el('password').value })
+      });
+      el('password').value = '';
+      // Reload ensures the independently initialized CMS and media modules
+      // request protected data only after the session cookie is established.
+      location.reload();
+    } catch (error) {
+      notice(error.message, true);
+    } finally {
+      pending = false;
+      if (button) button.disabled = false;
+    }
+  });
+  async function logout() {
+    if (pending) return;
+    pending = true;
+    try {
+      await request('/api/admin/logout', { method: 'POST' });
+      location.reload();
+    } catch (error) {
+      notice(error.message, true);
+    } finally { pending = false; }
+  }
+  el('cms-logout')?.addEventListener('click', logout);
+  el('logout')?.addEventListener('click', logout);
+  (async () => {
+    try {
+      const session = await request('/api/admin/session');
+      show(Boolean(session.authenticated));
+      if (session.authenticated) notice('');
+    } catch (error) {
+      show(false);
+      notice(error.message, true);
+      console.error('Admin session check failed:', error);
+    }
+  })();
+})();

@@ -1,3 +1,14 @@
+function safeArticleLink(raw) {
+  if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === 'https:' && u.hostname && !u.username && !u.password) return u.href;
+    if (u.protocol === 'mailto:' && /^mailto:[^\s@?]+@[^\s@?]+(?:\?[^\s]*)?$/i.test(raw)) return raw;
+  } catch (_) {}
+  return null;
+}
+
 
 import { Editor, StarterKit, Node } from './tiptap-bundle.js';
 
@@ -85,15 +96,22 @@ const FarmImage = Node.create({
       const hit = view.posAtCoords({left:x, top:y});
       if (!hit) return null;
       const $hit = view.state.doc.resolve(hit.pos);
-      // Find a top-level block. We never insert inside a paragraph or image.
       if ($hit.depth < 1) return null;
       const blockPos = $hit.before(1);
       const block = $hit.node(1);
       const dom = view.nodeDOM(blockPos);
       const rect = dom?.getBoundingClientRect?.();
+      // A text cursor inside a top-level paragraph or heading is a valid
+      // insertion point. ProseMirror will split that block when the block
+      // image is inserted; the text on either side remains in order.
+      if ($hit.depth === 1 && block.isTextblock && rect) {
+        const caret = view.coordsAtPos(hit.pos);
+        return {boundary:hit.pos, rect, caret, insideText:true};
+      }
+      // Lists, quotes, existing images and other nested blocks retain the
+      // safe before/after behavior to avoid corrupting their structure.
       const after = rect ? y > rect.top + rect.height / 2 : hit.pos > blockPos + block.nodeSize / 2;
-      const boundary = blockPos + (after ? block.nodeSize : 0);
-      return {boundary, rect, after};
+      return {boundary:blockPos + (after ? block.nodeSize : 0), rect, after, insideText:false};
     };
     const onMovePointer = e => {
       if (!activeMove || e.pointerId !== activeMove.pointerId) return;
@@ -101,13 +119,23 @@ const FarmImage = Node.create({
       activeMove.target = target;
       if (!target?.rect) { marker.remove(); return; }
       if (!marker.isConnected) document.body.appendChild(marker);
-      marker.style.left = `${target.rect.left}px`;
-      marker.style.top = `${target.after ? target.rect.bottom : target.rect.top}px`;
-      marker.style.width = `${target.rect.width}px`;
+      if (target.insideText && target.caret) {
+        marker.classList.add('farm-drop-indicator-caret');
+        marker.style.left = `${target.caret.left}px`;
+        marker.style.top = `${target.caret.top}px`;
+        marker.style.width = '3px';
+        marker.style.height = `${Math.max(16,target.caret.bottom-target.caret.top)}px`;
+      } else {
+        marker.classList.remove('farm-drop-indicator-caret');
+        marker.style.left = `${target.rect.left}px`;
+        marker.style.top = `${target.after ? target.rect.bottom : target.rect.top}px`;
+        marker.style.width = `${target.rect.width}px`;
+        marker.style.height = '0';
+      }
     };
     const onMoveRelease = e => {
       if (!activeMove || e.pointerId !== activeMove.pointerId) return;
-      const target = activeMove.target || dropBoundary(e.clientX, e.clientY);
+      const target = dropBoundary(e.clientX, e.clientY) || activeMove.target;
       const from = activeMove.from;
       clearMove();
       if (!target) return;
@@ -117,14 +145,18 @@ const FarmImage = Node.create({
       const end = from + nodeToMove.nodeSize;
       const dest = target.boundary;
       if (dest >= from && dest <= end) return;
-      // Delete first, then map the destination through the deletion.
-      let tr = state.tr.delete(from, end);
-      const mapped = tr.mapping.map(dest);
-      tr = tr.insert(mapped, nodeToMove);
-      // Keep the moved image selected after the document transaction.
-      view.dispatch(tr);
-      editor.commands.setNodeSelection(mapped);
-      view.focus();
+      try {
+        let tr = state.tr.delete(from, end);
+        const mapped = tr.mapping.map(dest);
+        // replaceRangeWith fits a block image into the document, splitting a
+        // paragraph at the caret if necessary, instead of nesting an image
+        // inside paragraph text (which the schema does not permit).
+        tr = tr.replaceRangeWith(mapped, mapped, nodeToMove);
+        view.dispatch(tr.scrollIntoView());
+        view.focus();
+      } catch (error) {
+        console.warn('Image move could not be completed; article unchanged.', error);
+      }
     };
     const onMoveCancel = e => {
       if (activeMove && e.pointerId === activeMove.pointerId) clearMove();
@@ -230,6 +262,20 @@ const FarmImage = Node.create({
 
 const section = document.getElementById('cms-section');
 const mount = document.getElementById('cms-rich-editor');
+// Make saved hyperlinks visible while editing, not only in preview.
+const cmsLinkStyle = document.createElement('style');
+cmsLinkStyle.textContent = `
+  #cms-editor .ProseMirror a[href],
+  #cms-editor-mount .ProseMirror a[href],
+  .ProseMirror a[href] {
+    color: #1769aa;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: text;
+  }
+`;
+document.head.appendChild(cmsLinkStyle);
+
 const toolbar = document.getElementById('cms-toolbar');
 const form = document.getElementById('cms-form');
 const newButton = document.getElementById('cms-new');
@@ -250,7 +296,7 @@ if (!section || !mount || !toolbar || !form ||
         ArticleLayout,
         StarterKit.configure({
           heading: { levels: [2, 3, 4] },
-          link: false,
+          link: { openOnClick: false, autolink: false },
           codeBlock: false
         })
       ],
@@ -282,6 +328,17 @@ updateWordCount();
   ['H4', () => editor.chain().focus().toggleHeading({ level: 4 }).run()],
   ['Bold', () => editor.chain().focus().toggleBold().run()],
   ['Italic', () => editor.chain().focus().toggleItalic().run()],
+  ['Insert / edit link', () => {
+    const current = editor.getAttributes('link').href || '';
+    const input = window.prompt('Link URL (https://, /page, or mailto:). Leave blank to remove:', current);
+    if (input === null) return;
+    if (!input.trim()) { editor.chain().focus().unsetLink().run(); return; }
+    const href = safeArticleLink(input.trim());
+    if (!href) { window.alert('Only HTTPS, internal /path, and mailto: links are allowed.'); return; }
+    if (editor.state.selection.empty && !editor.isActive('link')) { window.alert('Select the text to link first.'); return; }
+    editor.chain().focus().extendMarkRange('link').setLink({ href, target: href.startsWith('https:') ? '_blank' : null, rel: 'noopener noreferrer' }).run();
+  }],
+  ['Remove link', () => editor.chain().focus().unsetLink().run()],
   ['Underline', () => editor.chain().focus().toggleUnderline().run()],
   ['Strike', () => editor.chain().focus().toggleStrike().run()],
   ['Inline code', () => editor.chain().focus().toggleCode().run()],
@@ -667,7 +724,7 @@ updateWordCount();
       const parsed = new DOMParser().parseFromString(rawHtml, 'text/html');
       const allowed = new Set([
         'P', 'H2', 'H3', 'H4', 'STRONG', 'B', 'EM', 'I', 'UL', 'OL',
-        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'FIGURE', 'IMG', 'FIGCAPTION'
+        'LI', 'BLOCKQUOTE', 'BR', 'HR', 'S', 'DEL', 'A', 'FIGURE', 'IMG', 'FIGCAPTION'
       ]);
       function copyNode(node) {
         if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent);
@@ -682,6 +739,12 @@ updateWordCount();
           if(['1.2','1.4','1.65','2'].includes(line)) destination.style.lineHeight=line;
           const indent=Math.min(4,Math.max(0,parseInt(node.dataset.indent||'0',10)||0));
           if(indent) destination.style.marginLeft=`${indent*1.5}rem`;
+        }
+        if (node.tagName === 'A') {
+          const href = safeArticleLink(node.getAttribute('href') || '');
+          if (!href) return document.createTextNode(node.textContent || '');
+          destination.setAttribute('href', href);
+          if (href.startsWith('https:')) { destination.setAttribute('target', '_blank'); destination.setAttribute('rel', 'noopener noreferrer'); }
         }
         if (node.tagName === 'IMG') {
           const src = node.getAttribute('src') || '';
@@ -740,6 +803,82 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
       window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
     }
 
+
+
+    // Read-only preview of the SAVED revision. Does not change the editor form.
+    async function previewSavedLanguage(id, language) {
+      if (saving || loading || submittingReview || publishing) return;
+      try {
+        const data = await getJSON(language === 'ne'
+          ? `/api/admin/cms/translations/${id}`
+          : `/api/admin/cms/articles/${id}`);
+        const saved = language === 'ne' ? data.translation : data.article;
+        if (!saved?.content_json) throw new Error('No saved draft content for this language.');
+        const title = escapePreviewText(saved.title || 'Untitled');
+        const category = escapePreviewText(saved.category || 'FARM STORIES');
+        const excerpt = escapePreviewText(saved.excerpt || '');
+        const doc = typeof saved.content_json === 'string' ? JSON.parse(saved.content_json) : saved.content_json;
+        const content = previewJsonHtml(doc);
+        const html = `<!doctype html><html lang="${language}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Saved Draft Preview — ${title}</title>
+<style>:root{color-scheme:light}*{box-sizing:border-box}body{margin:0;background:#f8f6ef;color:#252c24;font:17px/1.75 Georgia,serif}header{padding:12px 5%;background:#6b342d;color:white;font:600 13px/1.4 Arial,sans-serif;letter-spacing:.06em}main{max-width:850px;margin:44px auto;padding:0 24px 80px}.category{font:600 12px/1.5 Arial,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#7c6251}h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{font-size:1.15rem;color:#586052}.article{margin-top:32px}.article p{margin:1em 0}.article h2,.article h3,.article h4{line-height:1.3}.article blockquote{border-left:4px solid #9b7453;padding-left:18px}.farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto;transform:rotate(var(--farm-rotation,0deg))}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}</style></head><body><header>SAVED DRAFT PREVIEW · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'} · NOT PUBLISHED BY THIS ACTION</header><main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p><div class="article">${content}</div></main></body></html>`;
+        const url = URL.createObjectURL(new Blob([html], {type:'text/html'}));
+        const tab = window.open(url, '_blank');
+        if (tab) tab.opener = null;
+        else showStatus('Please allow preview pop-ups for staging.', true);
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      } catch(error) {
+        console.error('Saved draft preview failed',error);
+        showStatus(error.message,true);
+      }
+    }
+    function previewJsonHtml(doc) {
+      const root=document.createElement('div');
+      function render(node) {
+        if(!node || typeof node!=='object') return document.createDocumentFragment();
+        if(node.type==='farmImage') {
+          const a=node.attrs||{};
+          if(!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\//.test(a.src||'')) return document.createDocumentFragment();
+          const fig=document.createElement('figure');fig.className='farm-inline-image';
+          fig.classList.add('farm-align-'+(['left','right','center'].includes(a.align)?a.align:'center'));
+          fig.classList.add('farm-wrap-'+(['left','right','none'].includes(a.wrap)?a.wrap:'none'));
+          for(const [name,key,def,min,max] of [['--farm-width','widthPct',100,15,100],['--farm-crop','crop',100,10,100],['--farm-crop-x','cropX',50,0,100],['--farm-crop-y','cropY',50,0,100]]) {
+            const v=Number(a[key]);fig.style.setProperty(name,`${Math.min(max,Math.max(min,Number.isFinite(v)?v:def))}%`);
+          }
+          const rotation=Number(a.rotation);fig.style.setProperty('--farm-rotation',`${[0,90,180,270].includes(rotation)?rotation:0}deg`);
+          const frame=document.createElement('div');frame.className='farm-image-window';
+          const img=document.createElement('img');img.src=a.src;img.alt=String(a.alt||'');img.loading='lazy';frame.append(img);
+          const caption=document.createElement('figcaption');caption.textContent=String(a.caption||'');
+          fig.append(frame,caption);return fig;
+        }
+        if(node.type==='text') {
+          let el=document.createTextNode(String(node.text||''));
+          for(const mark of node.marks||[]) {
+            const tag={bold:'strong',italic:'em',underline:'u',strike:'s',code:'code'}[mark.type];
+            if(tag){const wrap=document.createElement(tag);wrap.append(el);el=wrap;}
+            if(mark.type==='link') {
+              const href=safeArticleLink(mark.attrs?.href || '');
+              if(href) {const a=document.createElement('a');a.href=href;if(href.startsWith('https:')){a.target='_blank';a.rel='noopener noreferrer';}a.append(el);el=a;}
+            }
+          }
+          return el;
+        }
+        const tags={doc:null,paragraph:'p',heading:'h2',bulletList:'ul',orderedList:'ol',listItem:'li',blockquote:'blockquote',horizontalRule:'hr',hardBreak:'br'};
+        if(!Object.prototype.hasOwnProperty.call(tags,node.type)) return document.createDocumentFragment();
+        let tag=tags[node.type];
+        if(node.type==='heading' && [2,3,4].includes(Number(node.attrs?.level))) tag=`h${node.attrs.level}`;
+        const el=tag?document.createElement(tag):document.createDocumentFragment();
+        if(node.type==='paragraph'||node.type==='heading') {
+          const attrs=node.attrs||{};
+          if(['left','right','center','justify'].includes(attrs.textAlign)) el.style.textAlign=attrs.textAlign;
+          if(['1.2','1.4','1.65','2'].includes(String(attrs.lineHeight))) el.style.lineHeight=String(attrs.lineHeight);
+          const indent=Math.min(4,Math.max(0,parseInt(attrs.indent,10)||0));
+          if(indent) el.style.marginLeft=`${indent*1.5}rem`;
+        }
+        for(const child of node.content||[]) el.append(render(child));
+        return el;
+      }
+      root.append(render(doc));return root.innerHTML;
+    }
 
     function showStatus(message, isError = false) {
       statusMessage.textContent = message;
@@ -1348,7 +1487,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         await loadArticles();
         showStatus(`${name} article #${id} published successfully${publicationDetail(result.published)}.`);
         // Keep the result visible after the article list refreshes.
-        statusMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         console.error(`${name} publication failed:`, error);
         showStatus(error.message, true);
@@ -1458,6 +1597,33 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             });
 
             item.appendChild(englishButton);
+            const englishStatus = document.createElement('span');
+            englishStatus.textContent = ` English editorial status: ${article.english_review_status || 'draft'}`;
+            item.appendChild(englishStatus);
+            const englishReviewAction = (action,label) => {
+              const btn=document.createElement('button');btn.type='button';btn.textContent=label;
+              btn.addEventListener('click',async()=>{
+                const notes=action==='request_changes'?window.prompt('Required English review feedback:'):'';
+                if(action==='request_changes'&&!notes?.trim())return;
+                if(!window.confirm(`${label} for English article #${article.id}?`))return;
+                try{const response=await fetch(`/api/admin/cms/articles/${article.id}/review`,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,notes})});const data=await response.json();if(!response.ok)throw Error(data.error||'Review failed');await loadArticles();showStatus(`English: ${data.status}`);}catch(e){showStatus(e.message,true)}
+              });item.appendChild(btn);
+            };
+            if(['draft','changes_requested'].includes(article.english_review_status||'draft'))englishReviewAction('submit','Submit English for Review');
+            if(article.english_review_status==='submitted'){
+              englishReviewAction('approve','Approve English');
+              englishReviewAction('request_changes','Request English Changes');
+            }
+
+            const englishPreview = document.createElement('button');
+            englishPreview.type='button';
+            englishPreview.textContent='Preview English Draft';
+            englishPreview.addEventListener('click',()=>previewSavedLanguage(article.id,'en'));
+            item.appendChild(englishPreview);
+            const englishReviewStatus=document.createElement('span');
+            englishReviewStatus.textContent=' English review required before publication';
+            englishReviewStatus.className='cms-card-extra';
+            item.appendChild(englishReviewStatus);
 
             const publishEnglishButton = document.createElement('button');
             publishEnglishButton.type = 'button';
@@ -1469,8 +1635,25 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             publishEnglishButton.addEventListener('click', () => {
               publishArticle(article.id, 'en');
             });
+            publishEnglishButton.disabled = article.english_review_status !== 'approved';
+            publishEnglishButton.title = publishEnglishButton.disabled ? 'Approval of the current English revision required' : 'Publish approved English revision';
             publicationButtons.add(publishEnglishButton);
             item.appendChild(publishEnglishButton);
+
+            // Open the immutable published versions, not the editor preview.
+            const viewPublished = (language, caption) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.textContent = caption;
+              button.addEventListener('click', () => {
+                const url = `/post?slug=${encodeURIComponent(article.slug)}&lang=${language}`;
+                window.open(url, '_blank', 'noopener,noreferrer');
+              });
+              item.appendChild(button);
+            };
+            if (englishPublished) viewPublished('en', 'View English Article ↗');
+            if (nepaliPublished) viewPublished('ne', 'View Nepali Article ↗');
+
 
             const nepaliButton = document.createElement('button');
             nepaliButton.type = 'button';
@@ -1491,11 +1674,40 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             }
 
             item.appendChild(nepaliButton);
+            if (article.nepali_translation_id && nepaliStatus === 'approved' &&
+                article.nepali_source_status === 'outdated') {
+              const revise = document.createElement('button');
+              revise.type = 'button';
+              revise.textContent = 'Start Nepali Revision';
+              revise.addEventListener('click', async () => {
+                if (!window.confirm('Start a new Nepali draft? Existing published Nepali content stays live until a new revision is reviewed and published.')) return;
+                revise.disabled = true;
+                try {
+                  const response = await fetch(`/api/admin/cms/translations/${article.id}/start-revision`, {
+                    method: 'POST', credentials: 'same-origin',
+                    headers: { 'Content-Type': 'application/json' }, body: '{}'
+                  });
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.error || 'Unable to start Nepali revision');
+                  await loadArticles();
+                  await openNepaliDraft(article.id);
+                } catch (error) { showStatus(error.message, true); revise.disabled = false; }
+              });
+              item.appendChild(revise);
+            }
+
+            if (article.nepali_translation_id) {
+              const nepaliPreview=document.createElement('button');
+              nepaliPreview.type='button';
+              nepaliPreview.textContent='Preview Nepali Draft';
+              nepaliPreview.addEventListener('click',()=>previewSavedLanguage(article.id,'ne'));
+              item.appendChild(nepaliPreview);
+            }
 
             if (article.nepali_translation_id && nepaliStatus === 'draft') {
               const submitButton = document.createElement('button');
               submitButton.type = 'button';
-              submitButton.textContent = 'Submit for Review';
+              submitButton.textContent = 'Submit Nepali for Review';
               submitButton.addEventListener('click', () => {
                 submitNepaliForReview(article.id);
               });
@@ -1505,7 +1717,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
             if (article.nepali_translation_id) {
               const translationStatus = document.createElement('span');
               translationStatus.textContent =
-                ` Nepali: ${article.nepali_status || 'draft'}`;
+                ` Nepali editorial status: ${article.nepali_status || 'draft'}`;
 
               item.appendChild(translationStatus);
 
@@ -1678,13 +1890,31 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
     newButton.addEventListener('click', openNewDraft);
 
+    const saveCloseButton = document.createElement('button');
+    saveCloseButton.type = 'submit';
+    saveCloseButton.textContent = 'Save & Close';
+    saveButton.after(saveCloseButton);
+    const saveFeedback = document.createElement('span');
+    saveFeedback.setAttribute('role', 'status');
+    saveFeedback.setAttribute('aria-live', 'polite');
+    saveFeedback.style.display = 'block';
+    saveCloseButton.after(saveFeedback);
+    function showSaveFeedback(message, isError = false) {
+      saveFeedback.textContent = message;
+      saveFeedback.className = isError ? 'admin-error' : 'admin-note';
+    }
+    form.addEventListener('input', () => { if (!saving) saveFeedback.textContent = ''; });
+    editor.on('update', () => { if (!saving) saveFeedback.textContent = ''; });
+
     form.addEventListener('submit', async event => {
       event.preventDefault();
 
       if (saving || loading || submittingReview || publishing) return;
       if (!form.reportValidity()) return;
+      const closeAfterSave = event.submitter === saveCloseButton;
 
       if (editor.isEmpty) {
+        showSaveFeedback('Please enter article content.', true);
         showStatus('Please enter article content.', true);
         editor.commands.focus();
         return;
@@ -1710,7 +1940,11 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         }
       }
 
+      const submittedSnapshot = currentEditorSnapshot();
       saving = true;
+      saveButton.textContent = isEditing ? 'Updating…' : 'Saving…';
+      showSaveFeedback('Saving draft…');
+      saveCloseButton.disabled = true;
       saveButton.disabled = true;
       newButton.disabled = true;
 
@@ -1755,23 +1989,41 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         const savedId = isEditing ? targetId : result.id;
         const savedLanguage = isNepali ? 'Nepali' : 'English';
 
-        clearForm();
-        form.hidden = true;
+        // Keep the editor open after saving. Hiding it collapses the page
+        // above the viewport and causes the unexpected mid-page jump.
+        editingId = savedId;
+        if (!isNepali) {
+          slugField.readOnly = true;
+          categoryField.readOnly = true;
+        }
+        saveButton.textContent = isNepali ? 'Save Nepali draft' : 'Update English draft';
+        savedEditorSnapshot = submittedSnapshot;
 
-        showStatus(
-          `${savedLanguage} draft #${savedId} saved successfully.`
-        );
-
+        showStatus(`${savedLanguage} draft #${savedId} saved successfully.`);
+        showSaveFeedback(`${savedLanguage} draft saved successfully.`);
         console.log('CMS draft saved:', result);
 
+        const previousScroll = window.scrollY;
         await loadArticles();
+        if (closeAfterSave && currentEditorSnapshot() === savedEditorSnapshot) {
+          clearForm();
+          form.hidden = true;
+          previewButton.disabled = true;
+          showStatus(`${savedLanguage} draft #${savedId} saved successfully. Editor closed.`);
+          articlesList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          requestAnimationFrame(() => window.scrollTo({ top: previousScroll, left: 0, behavior: 'instant' }));
+        }
 
       } catch (error) {
         console.error('CMS draft saving failed:', error);
         showStatus(error.message, true);
+        showSaveFeedback(error.message, true);
 
       } finally {
         saving = false;
+        saveCloseButton.disabled = false;
+        saveButton.textContent = editingLanguage === 'ne' ? 'Save Nepali draft' : editingId !== null ? 'Update English draft' : 'Save English draft';
         newButton.disabled = false;
         saveButton.disabled = form.hidden;
       }
