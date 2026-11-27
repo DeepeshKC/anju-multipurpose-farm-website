@@ -1,3 +1,10 @@
+function formatNepaliDate(d) {
+  const parts = new Intl.DateTimeFormat('en-US', {year:'numeric',month:'numeric',day:'numeric',timeZone:'Asia/Kathmandu'}).formatToParts(d);
+  const part = type => parts.find(p => p.type === type).value;
+  const months = ['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'];
+  const digits = v => String(v).replace(/[0-9]/g, n => '०१२३४५६७८९'[Number(n)]);
+  return `${digits(part('day'))} ${months[Number(part('month'))-1]} ${digits(part('year'))}`;
+}
 import { sanitizePublishedHTML } from './_article-html.js';
 import { onRequestGet as readArticle } from './api/post/[slug].js';
 const origin = 'https://www.anjumultipurposefarm.com.np';
@@ -31,7 +38,7 @@ export async function onRequestGet(context) {
   graph[1].author = post.author ? {'@type':'Person',name:post.author} : {'@id':publisher['@id']};
   if (published) graph[1].datePublished = published;
   if (modified) graph[1].dateModified = modified;
-  const dateLabel = value => new Intl.DateTimeFormat(language==='ne'?'ne-NP':'en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(new Date(value));
+  const dateLabel = value => language === 'ne' ? formatNepaliDate(new Date(value)) : new Intl.DateTimeFormat('en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(new Date(value));
   const byline = `<p class="blog-byline">${escape(post.author || (language==='ne'?'अञ्जु बहुउद्देश्यीय कृषि फार्म':publisher.name))}${published ? ` · ${language==='ne'?'प्रकाशित':'Published'} <time datetime="${published}">${escape(dateLabel(published))}</time>` : ''}${modified && (!published || dateLabel(modified)!==dateLabel(published)) ? ` · ${language==='ne'?'अद्यावधिक':'Updated'} <time datetime="${modified}">${escape(dateLabel(modified))}</time>` : ''}</p>`;
   const structured = JSON.stringify({'@context':'https://schema.org','@graph':graph}).replace(/</g,'\\u003c');
   const tags = [ `<script type="application/ld+json">${structured}</script>`, `<meta charset="utf-8">`, `<meta name="viewport" content="width=device-width,initial-scale=1">`, `<title>${escape(title)}</title>`, meta('name','description',description), meta('name','robots',staging?'noindex,nofollow':'index,follow'), ...Object.entries({'og:type':'article','og:title':title,'og:description':description,'og:image':image,'og:url':canonical,'og:locale':language==='ne'?'ne_NP':'en_US'}).map(([k,v])=>meta('property',k,v)), ...Object.entries({'twitter:card':'summary_large_image','twitter:title':title,'twitter:description':description,'twitter:image':image}).map(([k,v])=>meta('name',k,v)), `<link rel="canonical" href="${escape(canonical)}">`, `<link rel="alternate" hreflang="en" href="${escape(path+'en')}">`, post.has_nepali_publication ? `<link rel="alternate" hreflang="ne" href="${escape(path+'ne')}">` : '', '<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">','<link href="css/style.css" rel="stylesheet">','<script defer src="js/script.js"></script>','<script defer src="js/post.js"></script>' ].join('\n');
