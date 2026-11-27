@@ -1,6 +1,8 @@
 // Store validated media metadata in the same immutable JSON snapshot as the article.
 export async function validateFeatured(db, doc) {
   if (!doc || typeof doc !== 'object') throw new Error('Invalid document');
+  if (doc.author != null && (typeof doc.author !== 'string' || doc.author.length > 150)) throw new Error('Invalid author');
+  doc.author = (doc.author || '').trim();
   const id = doc.featuredImage?.mediaId;
   delete doc.featuredImage;
   if (id == null) return;
