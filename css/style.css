@@ -1204,3 +1204,5 @@ html[lang="ne"] .blog-article-content figure.farm-inline-image figcaption {font-
 #cms-section #cms-rich-editor[lang="ne"] .tiptap {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;font-size:calc(19px * var(--cms-editor-zoom,1));line-height:1.9}
 #cms-section #cms-rich-editor[lang="ne"] .tiptap :is(h2,h3) {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;line-height:1.4}
 #cms-section #cms-rich-editor[lang="ne"] .farm-inline-image figcaption {font-size:16px;line-height:1.7}
+
+.blog-byline{font-size:.9rem;line-height:1.7;color:inherit;opacity:.8;margin:0 0 1.25rem;}
