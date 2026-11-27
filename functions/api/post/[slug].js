@@ -22,7 +22,7 @@ export async function onRequestGet({ env, params, request }) {
         er.excerpt AS english_excerpt,
         er.content_html AS english_content,
         er.content_json AS english_json, nr.content_json AS nepali_json,
-        en.language_published_at AS published_at,
+        en.language_published_at AS published_at, en.first_published_at AS english_first, ne.first_published_at AS nepali_first, ne.language_published_at AS nepali_modified,
         nr.title AS nepali_title,
         nr.excerpt AS nepali_excerpt,
         nr.content_html AS nepali_content,
@@ -58,7 +58,8 @@ export async function onRequestGet({ env, params, request }) {
         cms.nepali_title !== null &&
         cms.nepali_content !== null;
 
-      const cover = JSON.parse((useNepali ? cms.nepali_json : cms.english_json) || "{}").featuredImage;
+      const doc = JSON.parse((useNepali ? cms.nepali_json : cms.english_json) || "{}");
+      const cover = doc.featuredImage;
       return reply({
         post: {
           slug: cms.slug,
@@ -73,7 +74,9 @@ export async function onRequestGet({ env, params, request }) {
           featured_alt: (useNepali ? cover?.alt_ne : cover?.alt_en) || "",
           fallback: language === 'ne' && !useNepali,
           has_nepali_publication: cms.nepali_title !== null && cms.nepali_content !== null,
-          published_at: cms.published_at
+          author: typeof doc.author === "string" ? doc.author : "",
+          published_at: useNepali ? cms.nepali_first : cms.english_first,
+          modified_at: useNepali ? cms.nepali_modified : cms.published_at
         }
       });
     }
