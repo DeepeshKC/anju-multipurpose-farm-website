@@ -1,3 +1,4 @@
+import {mediaFolder,ownsMedia} from '../../../_media-environment.js';
 
 import {reply,guard,sameOrigin} from '../../../_shared.js';
 
@@ -59,7 +60,8 @@ export async function onRequestPost(ctx) {
     return reply({error:'Image exceeds the 10 MB upload limit.'},400);
 
   const timestamp = Math.floor(Date.now()/1000);
-  const folder = 'anju-farm/staging';
+  const folder = mediaFolder(ctx.request,ctx.env);
+  if (!folder) return reply({error:'Media environment mismatch'},503);
   const public_id = crypto.randomUUID();
 
   const params = `folder=${folder}&public_id=${public_id}&timestamp=${timestamp}`;
