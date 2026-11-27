@@ -47,7 +47,8 @@ export async function onRequestGet({ env, request }) {
           ELSE 0
         END AS fallback,
 
-        en.language_published_at AS published_at
+        en.language_published_at AS published_at,
+        er.content_json AS english_json, nr.content_json AS nepali_json
 
       FROM posts p
 
@@ -79,7 +80,7 @@ export async function onRequestGet({ env, request }) {
         p.excerpt,
         'en' AS language,
         CASE WHEN ? = 'ne' THEN 1 ELSE 0 END AS fallback,
-        p.published_at
+        p.published_at, NULL, NULL
 
       FROM posts p
 
@@ -105,6 +106,9 @@ export async function onRequestGet({ env, request }) {
     return reply({
       posts: (results || []).map(post => ({
         ...post,
+        featured_image: JSON.parse((post.language==='ne'?post.nepali_json:post.english_json)||'{}').featuredImage?.src || null,
+        featured_alt: JSON.parse((post.language==='ne'?post.nepali_json:post.english_json)||'{}').featuredImage?.[post.language==='ne'?'alt_ne':'alt_en'] || '',
+        english_json: undefined, nepali_json: undefined,
         fallback: Boolean(post.fallback),
         requested_language: language
       }))
