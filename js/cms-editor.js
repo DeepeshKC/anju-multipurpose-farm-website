@@ -680,6 +680,30 @@ updateWordCount();
     const seoTitleField = document.getElementById('cms-seo-title');
     const seoDescriptionField = document.getElementById('cms-seo-description');
 
+    let featured = null;
+    const featuredBox = document.createElement('fieldset');
+    featuredBox.innerHTML = '<legend>Featured image</legend><p>Choose the cover photograph for this language. It is separate from inline images.</p><button type="button" data-choose>Choose photograph</button> <button type="button" data-remove>Remove</button><p data-status></p><img data-preview hidden style="max-width:240px;height:auto">';
+    titleField.parentElement.after(featuredBox);
+    const coverPreview=featuredBox.querySelector('[data-preview]');
+    function setFeatured(value){
+      featured=value || null;
+      coverPreview.hidden=!featured;
+      if(featured){coverPreview.src=featured.src;coverPreview.alt=featured.alt_en||'';}else coverPreview.removeAttribute('src');
+      featuredBox.querySelector('[data-remove]').disabled=!featured;
+    }
+    featuredBox.querySelector('[data-remove]').onclick=()=>setFeatured(null);
+    featuredBox.querySelector('[data-choose]').onclick=async()=>{
+      const dialog=document.createElement('dialog');
+      const close=document.createElement('button');close.type='button';close.textContent='Cancel';close.onclick=()=>dialog.close();dialog.append(close);
+      const gallery=document.createElement('div');gallery.className='cms-image-gallery';dialog.append(gallery);
+      document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove(),{once:true});dialog.showModal();
+      try{const data=await getJSON('/api/admin/media');for(const m of data.items||[]){
+        const b=document.createElement('button');b.type='button';b.className='cms-image-tile';const img=document.createElement('img');img.src=m.secure_url;img.alt=m.alt_en||'Photograph';img.style.maxWidth='140px';b.append(img,document.createTextNode('Photo #'+m.id));gallery.append(b);
+        b.onclick=()=>{setFeatured({mediaId:m.id,src:m.secure_url,alt_en:m.alt_en,alt_ne:m.alt_ne});dialog.close();};
+      }if(!gallery.children.length)gallery.textContent='No photographs available.';}catch(e){gallery.textContent=e.message;}
+    };
+    setFeatured(null);
+    function documentWithCover(){return {...editor.getJSON(),featuredImage:featured};}
     let editingId = null;
     let editingLanguage = 'en';
     let saving = false;
@@ -695,7 +719,7 @@ updateWordCount();
         excerpt: excerptField.value,
         seoTitle: seoTitleField.value,
         seoDescription: seoDescriptionField.value,
-        content: editor.getJSON()
+        content: documentWithCover()
       });
     }
 
@@ -795,7 +819,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 .farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
 </style></head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
 <main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
-<div class="article">${content}</div></main></body></html>`;
+${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featured.src)}" alt="${escapePreviewText((language==='ne'?featured.alt_ne:featured.alt_en)||'')}">` : ''}<div class="article">${content}</div></main></body></html>`;
       const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const tab = window.open(blobUrl, '_blank');
       if (tab) tab.opener = null;
@@ -900,6 +924,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
     function clearForm() {
       form.reset();
+      setFeatured(null);
       editor.commands.clearContent();
 
       categoryField.value = 'FARM STORIES';
@@ -972,6 +997,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 
         setLanguage('en');
         editor.commands.setContent(article.content_json);
+        setFeatured(article.content_json.featuredImage);
 
         form.hidden = false;
         recordEditorSnapshot();
@@ -1042,6 +1068,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         seoDescriptionField.value = nepali?.seo_description || '';
 
         setLanguage('ne');
+        setFeatured(nepali?.content_json ? nepali.content_json.featuredImage : english.content_json?.featuredImage);
 
         if (nepali?.content_json) {
           editor.commands.setContent(nepali.content_json);
@@ -1929,7 +1956,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
         excerpt: excerptField.value.trim(),
         seo_title: seoTitleField.value.trim(),
         seo_description: seoDescriptionField.value.trim(),
-        content_json: editor.getJSON()
+        content_json: documentWithCover()
       };
 
       if (!isNepali) {

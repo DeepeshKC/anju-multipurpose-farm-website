@@ -55,6 +55,7 @@ function renderBlog() {
 
     return `
       <article class="blog-card">
+        ${/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(p.featured_image||'') ? `<img class="blog-featured-image" loading="lazy" src="${esc(p.featured_image)}" alt="${esc(p.featured_alt)}">` : ''}
         <span class="eyebrow">${esc(p.category)}</span>
         <h2>${esc(p.title)}</h2>
         <p>${esc(p.excerpt)}</p>
