@@ -238,7 +238,7 @@ function renderPost() {
   const isNe = p.language === 'ne';
   byline.textContent = p.author || (isNe ? 'अञ्जु बहुउद्देश्यीय कृषि फार्म' : 'Anju Multipurpose Agriculture Farm');
   const date = v => {const d=new Date(String(v||'').replace(' ','T')+'Z');return Number.isFinite(d.getTime())?d:null;};
-  const fmt = d => isNe ? formatNepaliDate(d) : new Intl.DateTimeFormat('en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(d);
+  const fmt = d => new Intl.DateTimeFormat(isNe?'ne-NP':'en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(d);
   const pub=date(p.published_at), mod=date(p.modified_at);
   function addDate(label,d){const t=document.createElement('time');t.dateTime=d.toISOString();t.textContent=fmt(d);byline.append(document.createTextNode(' · '+label+' '),t);}
   if(pub)addDate(isNe?'प्रकाशित':'Published',pub);
