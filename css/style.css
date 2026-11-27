@@ -1215,3 +1215,11 @@ html[lang="ne"] .blog-article-content figure.farm-inline-image figcaption {font-
     background-image: linear-gradient(90deg, rgba(13, 35, 22, 0.83) 0%, rgba(13, 35, 22, 0.56) 48%, rgba(13, 35, 22, 0.1) 100%), url("../images/vegetable-fields-opt-1280.webp");
   }
 }
+
+/* Stage 24E.3A: HTML hero image, with original crop and overlay. */
+.hero-background-html { background: none; }
+.hero-background-html > picture { display: block; position: absolute; inset: 0; }
+.hero-background-html .hero-image { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center 52%; }
+.hero-background-html::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(13, 35, 22, 0.83) 0%, rgba(13, 35, 22, 0.56) 48%, rgba(13, 35, 22, 0.1) 100%); pointer-events: none; }
+@media (max-width: 800px) { .hero-background-html .hero-image { object-position: 58% center; } }
+@media (max-width: 520px) { .hero-background-html .hero-image { object-position: 60% center; } }
