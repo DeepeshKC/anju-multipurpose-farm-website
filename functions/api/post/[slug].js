@@ -21,6 +21,7 @@ export async function onRequestGet({ env, params, request }) {
         er.title AS english_title,
         er.excerpt AS english_excerpt,
         er.content_html AS english_content,
+        er.content_json AS english_json, nr.content_json AS nepali_json,
         en.language_published_at AS published_at,
         nr.title AS nepali_title,
         nr.excerpt AS nepali_excerpt,
@@ -57,6 +58,7 @@ export async function onRequestGet({ env, params, request }) {
         cms.nepali_title !== null &&
         cms.nepali_content !== null;
 
+      const cover = JSON.parse((useNepali ? cms.nepali_json : cms.english_json) || "{}").featuredImage;
       return reply({
         post: {
           slug: cms.slug,
@@ -67,7 +69,8 @@ export async function onRequestGet({ env, params, request }) {
           content_format: 'html',
           language: useNepali ? 'ne' : 'en',
           requested_language: language,
-          social_image: useNepali ? cms.nepali_image : cms.english_image,
+          social_image: cover?.src || (useNepali ? cms.nepali_image : cms.english_image),
+          featured_alt: (useNepali ? cover?.alt_ne : cover?.alt_en) || "",
           fallback: language === 'ne' && !useNepali,
           has_nepali_publication: cms.nepali_title !== null && cms.nepali_content !== null,
           published_at: cms.published_at
