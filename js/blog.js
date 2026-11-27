@@ -12,10 +12,8 @@ const esc = s => String(s ?? '').replace(
   }[c])
 );
 
-const lang = () =>
-  localStorage.getItem('anjuFarmLanguage') === 'ne'
-    ? 'ne'
-    : 'en';
+let selected = document.documentElement.lang === 'ne' ? 'ne' : 'en';
+const lang = () => selected;
 
 let blogPosts = null;
 let blogError = false;
@@ -25,6 +23,7 @@ function renderBlog() {
   const ne = lang() === 'ne';
 
   if (blogError) {
+    if (list.querySelector('article.blog-card')) return;
     list.textContent = ne
       ? 'कथाहरू अहिले उपलब्ध छैनन्। कृपया पछि फेरि प्रयास गर्नुहोस्।'
       : 'Stories are temporarily unavailable. Please try again later.';
@@ -32,6 +31,7 @@ function renderBlog() {
   }
 
   if (!blogPosts) {
+    if (list.querySelector('article.blog-card')) return;
     list.textContent = ne
       ? 'कथाहरू लोड हुँदैछन्…'
       : 'Loading stories…';
@@ -51,7 +51,7 @@ function renderBlog() {
         ? '<span class="blog-language-notice">नेपाली अनुवाद उपलब्ध छैन। अंग्रेजीमा पढ्नुहोस्।</span>'
         : '';
 
-    const link = `post.html?slug=${encodeURIComponent(p.slug)}&lang=${encodeURIComponent(ne ? 'ne' : 'en')}`;
+    const link = `/post?slug=${encodeURIComponent(p.slug)}&lang=${encodeURIComponent(ne ? 'ne' : 'en')}`;
 
     return `
       <article class="blog-card">
@@ -111,6 +111,9 @@ async function loadBlog() {
   }
 }
 
-document.addEventListener('anju-language-change', loadBlog);
+document.addEventListener('anju-language-change', event => {
+  selected = event.detail?.language === 'ne' ? 'ne' : 'en';
+  loadBlog();
+});
 
-loadBlog();
+if (list.dataset.renderedLanguage !== selected || !list.querySelector('article.blog-card')) loadBlog();
