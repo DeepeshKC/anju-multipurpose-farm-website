@@ -7,7 +7,7 @@ export async function onRequestPatch(ctx){
  let data;try{data=await ctx.request.json();}catch{return reply({error:'Invalid JSON'},400);}
  const keys=['alt_en','alt_ne','caption_en','caption_ne'];
  if(!data||keys.some(k=>typeof data[k]!=='string'||data[k].length>500))return reply({error:'Invalid metadata'},400);
- try{const item=await ctx.env.DB.prepare('UPDATE cloudinary_media SET alt_en=?,alt_ne=?,caption_en=?,caption_ne=? WHERE id=? AND NOT EXISTS (SELECT 1 FROM cloudinary_media_trash WHERE media_id=?) RETURNING id,secure_url,format,width,height,bytes,alt_en,alt_ne,caption_en,created_at').bind(...keys.map(k=>data[k].trim()),id,id).first();return item?reply({item}):reply({error:'Image not found'},404);}catch(e){console.error(e);return reply({error:'Could not save image details'},503);}
+ try{const item=await ctx.env.DB.prepare('UPDATE cloudinary_media SET alt_en=?,alt_ne=?,caption_en=?,caption_ne=? WHERE id=? AND NOT EXISTS (SELECT 1 FROM cloudinary_media_trash WHERE media_id=?) RETURNING id,secure_url,format,width,height,bytes,alt_en,alt_ne,caption_en,caption_ne,created_at').bind(...keys.map(k=>data[k].trim()),id,id).first();return item?reply({item}):reply({error:'Image not found'},404);}catch(e){console.error(e);return reply({error:'Could not save image details'},503);}
 }
 
 const validId=ctx=>{const id=Number(ctx.params.id);return Number.isSafeInteger(id)&&id>0?id:null;};
