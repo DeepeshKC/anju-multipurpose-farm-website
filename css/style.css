@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap");
 
 :root {
   --green: #234832;
@@ -1193,3 +1194,13 @@ body:has(#cms-section:not([hidden])) main {max-width:1480px;width:min(96%,1480px
 .cms-cover-picker .cms-image-tile{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;padding:8px;text-align:center}
 .cms-cover-picker .cms-image-tile img{display:block;width:100%;max-width:none;height:150px;object-fit:contain;background:#f5f5f0;border-radius:6px}
 .cms-cover-picker .cms-image-tile:hover,.cms-cover-picker button:focus-visible{outline:2px solid #36734e;outline-offset:2px}
+
+/* Nepali article typography: preserve English and stored content. */
+html[lang="ne"] .blog-article {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;font-size:19px;line-height:1.9}
+html[lang="ne"] .blog-article p {font-size:19px}
+html[lang="ne"] .blog-article h1,html[lang="ne"] .blog-article h2,html[lang="ne"] .blog-article h3 {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;line-height:1.4}
+html[lang="ne"] .blog-article h2 {font-size:1.85rem}
+html[lang="ne"] .blog-article-content figure.farm-inline-image figcaption {font-size:16px;line-height:1.7}
+#cms-section #cms-rich-editor[lang="ne"] .tiptap {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;font-size:calc(19px * var(--cms-editor-zoom,1));line-height:1.9}
+#cms-section #cms-rich-editor[lang="ne"] .tiptap :is(h2,h3) {font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;line-height:1.4}
+#cms-section #cms-rich-editor[lang="ne"] .farm-inline-image figcaption {font-size:16px;line-height:1.7}
