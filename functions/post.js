@@ -5,7 +5,7 @@ function formatNepaliDate(d) {
   const digits = v => String(v).replace(/[0-9]/g, n => '०१२३४५६७८९'[Number(n)]);
   return `${digits(part('day'))} ${months[Number(part('month'))-1]} ${digits(part('year'))}`;
 }
-import { sanitizePublishedHTML } from './_article-html.js';
+import { sanitizePublishedHTML, deliveryAttrs } from './_article-html.js';
 import { onRequestGet as readArticle } from './api/post/[slug].js';
 const origin = 'https://www.anjumultipurposefarm.com.np';
 const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -41,14 +41,14 @@ export async function onRequestGet(context) {
   const dateLabel = value => language === 'ne' ? formatNepaliDate(new Date(value)) : new Intl.DateTimeFormat('en-US',{dateStyle:'long',timeZone:'Asia/Kathmandu'}).format(new Date(value));
   const byline = `<p class="blog-byline">${escape(post.author || (language==='ne'?'अञ्जु बहुउद्देश्यीय कृषि फार्म':publisher.name))}${published ? ` · ${language==='ne'?'प्रकाशित':'Published'} <time datetime="${published}">${escape(dateLabel(published))}</time>` : ''}${modified && (!published || dateLabel(modified)!==dateLabel(published)) ? ` · ${language==='ne'?'अद्यावधिक':'Updated'} <time datetime="${modified}">${escape(dateLabel(modified))}</time>` : ''}</p>`;
   const structured = JSON.stringify({'@context':'https://schema.org','@graph':graph}).replace(/</g,'\\u003c');
-  const tags = [ `<script type="application/ld+json">${structured}</script>`, `<meta charset="utf-8">`, `<meta name="viewport" content="width=device-width,initial-scale=1">`, `<title>${escape(title)}</title>`, meta('name','description',description), meta('name','robots',staging?'noindex,nofollow':'index,follow'), ...Object.entries({'og:type':'article','og:title':title,'og:description':description,'og:image':image,'og:url':canonical,'og:locale':language==='ne'?'ne_NP':'en_US'}).map(([k,v])=>meta('property',k,v)), ...Object.entries({'twitter:card':'summary_large_image','twitter:title':title,'twitter:description':description,'twitter:image':image}).map(([k,v])=>meta('name',k,v)), `<link rel="canonical" href="${escape(canonical)}">`, `<link rel="alternate" hreflang="en" href="${escape(path+'en')}">`, post.has_nepali_publication ? `<link rel="alternate" hreflang="ne" href="${escape(path+'ne')}">` : '', '<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">','<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="css/style.css?v=24e3" rel="stylesheet">','<script defer src="js/script.js"></script>','<script defer src="js/post.js"></script>' ].join('\n');
+  const tags = [ `<script type="application/ld+json">${structured}</script>`, `<meta charset="utf-8">`, `<meta name="viewport" content="width=device-width,initial-scale=1">`, `<title>${escape(title)}</title>`, meta('name','description',description), meta('name','robots',staging?'noindex,nofollow':'index,follow'), ...Object.entries({'og:type':'article','og:title':title,'og:description':description,'og:image':image,'og:url':canonical,'og:locale':language==='ne'?'ne_NP':'en_US'}).map(([k,v])=>meta('property',k,v)), ...Object.entries({'twitter:card':'summary_large_image','twitter:title':title,'twitter:description':description,'twitter:image':image}).map(([k,v])=>meta('name',k,v)), `<link rel="canonical" href="${escape(canonical)}">`, `<link rel="alternate" hreflang="en" href="${escape(path+'en')}">`, post.has_nepali_publication ? `<link rel="alternate" hreflang="ne" href="${escape(path+'ne')}">` : '', '<link rel="icon" href="/images/favicon.svg" type="image/svg+xml">','<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="preconnect" href="https://res.cloudinary.com"><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="css/style.css?v=24e3" rel="stylesheet">','<script defer src="js/script.js"></script>','<script defer src="js/post.js?v=24e5c"></script>' ].join('\n');
   if (!/<head>[\s\S]*?<\/head>/i.test(html)) return error(503,'Article template unavailable');
   const articlePattern = /<article class="blog-article" id="post">[\s\S]*?<\/article>/i;
   if (!articlePattern.test(html)) return error(503,'Article template unavailable');
   let body;
   try {
     body = post.content_format === 'html'
-      ? await sanitizePublishedHTML(post.content)
+      ? await sanitizePublishedHTML(post.content, post.image_dimensions)
       : String(post.content ?? '').split(/\n\s*\n/).filter(Boolean).map(p => `<p>${escape(p)}</p>`).join('');
   } catch (e) {
     console.error('Article sanitization failed', e);
@@ -56,7 +56,7 @@ export async function onRequestGet(context) {
   }
   const back = lang === 'ne' ? '← सबै कथाहरू' : '← All stories';
   const notice = post.fallback ? '<p class="blog-language-notice" role="status">यस कथाको नेपाली अनुवाद अझै उपलब्ध छैन। यो कथा अंग्रेजीमा देखाइएको छ।</p>' : '';
-  const article = `<article class="blog-article" id="post" data-rendered-language="${lang}" data-content-language="${language}"><a class="blog-back" href="blog.html">${back}</a><span class="eyebrow">${escape(lang === 'ne' && String(post.category ?? '').toLowerCase() === 'farm stories' ? 'फार्मका कथाहरू' : post.category ?? '')}</span><h1>${escape(post.title ?? '')}</h1>${byline}${notice}${post.social_image && image===post.social_image ? `<img class="blog-featured-image" src="${escape(image)}" alt="${escape(post.featured_alt || '')}">` : ''}<div class="blog-article-content">${body}</div></article>`;
+  const article = `<article class="blog-article" id="post" data-rendered-language="${lang}" data-content-language="${language}"><a class="blog-back" href="blog.html">${back}</a><span class="eyebrow">${escape(lang === 'ne' && String(post.category ?? '').toLowerCase() === 'farm stories' ? 'फार्मका कथाहरू' : post.category ?? '')}</span><h1>${escape(post.title ?? '')}</h1>${byline}${notice}${post.social_image && image===post.social_image ? `<img class="blog-featured-image" ${Object.entries(deliveryAttrs(image, post.image_dimensions, true)).map(([k,v])=>`${k}="${escape(v)}"`).join(" ")} alt="${escape(post.featured_alt || '')}">` : ''}<div class="blog-article-content">${body}</div></article>`;
   const localized = lang === 'ne' ? html.replace(/(<[^>]+data-en="[^"]*"[^>]*data-ne="([^"]*)"[^>]*>)[^<]*(?=<)/g, (_, tag, translation) => tag + translation).replace('type="button">नेपाली</button>', 'type="button">English</button>') : html;
   return new Response(localized.replace(/<html lang="en">/i,`<html lang="${language}">`).replace(/<head>[\s\S]*?<\/head>/i,()=>`<head>\n${tags}\n</head>`).replace(articlePattern,()=>article),{headers});
 }

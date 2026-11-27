@@ -1,3 +1,22 @@
+// Transform only original, versioned Cloudinary image URLs. Preserve stored originals.
+export function deliveryAttrs(src, dimensions, priority = false) {
+  const match = /^(https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/)(v[0-9]+\/[a-zA-Z0-9_./-]+)$/.exec(src);
+  const attrs = {src, loading: priority ? 'eager' : 'lazy', decoding: 'async'};
+  if (priority) attrs.fetchpriority = 'high';
+  const d = dimensions?.find(x => x.secure_url === src);
+  if (d && Number.isSafeInteger(d.width) && Number.isSafeInteger(d.height) && d.width > 0 && d.height > 0) {
+    attrs.width = String(d.width); attrs.height = String(d.height);
+  }
+  if (match) {
+    const limit = Math.min(d?.width || 1600, 1600);
+    const widths = [...new Set([480, 768, 1024, 1280, 1600].map(w => Math.min(w, limit)))];
+    const variant = w => `${match[1]}f_auto,q_auto,c_limit,w_${w}/${match[2]}`;
+    attrs.src = variant(Math.min(768, limit));
+    attrs.srcset = widths.map(w => `${variant(w)} ${w}w`).join(', ');
+    attrs.sizes = '(max-width: 850px) 88vw, 750px';
+  }
+  return attrs;
+}
 // Cloudflare HTMLRewriter parses markup before the allowlist is applied.
 const allowed = new Set('p h2 h3 h4 ul ol li strong b em i br blockquote figure figcaption img hr s u code a'.split(' '));
 const imageURL = /^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/;
@@ -11,7 +30,8 @@ function safeLink(raw) {
   } catch (_) {}
   return null;
 }
-export async function sanitizePublishedHTML(html) {
+export async function sanitizePublishedHTML(html, dimensions = []) {
+  let firstImage = true;
   const rewriter = new HTMLRewriter().on('*', {
     element(el) {
       const tag = el.tagName.toLowerCase();
@@ -37,9 +57,9 @@ export async function sanitizePublishedHTML(html) {
       }
       if (tag === 'img') {
         if (!imageURL.test(attrs.src || '')) { el.remove(); return; }
-        el.setAttribute('src', attrs.src);
+        for (const [key,value] of Object.entries(deliveryAttrs(attrs.src, dimensions, firstImage))) el.setAttribute(key,value);
+        firstImage = false;
         el.setAttribute('alt', attrs.alt || '');
-        el.setAttribute('loading', 'lazy');
       }
       if (tag === 'figure') {
         const classes = (attrs.class || '').split(/\s+/).filter(x => /^farm-(?:inline-image|size-(?:small|medium|large|full)|align-(?:left|center|right)|wrap-(?:none|left|right))$/.test(x));
