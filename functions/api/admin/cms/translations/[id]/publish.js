@@ -42,7 +42,8 @@ export async function onRequestPost(ctx) {
     const result = await db.prepare(`
       UPDATE post_translations
       SET published_revision_id = approved_revision_id,
-          language_published_at = CASE
+          first_published_at = COALESCE(first_published_at, CASE WHEN language_published_at IS NULL THEN datetime('now') END),
+            language_published_at = CASE
             WHEN published_revision_id = approved_revision_id
               AND language_published_at IS NOT NULL
             THEN language_published_at
