@@ -1178,3 +1178,5 @@ body:has(#cms-section:not([hidden])) main {max-width:1480px;width:min(96%,1480px
   #cms-section .cms-document-workbench { top: 58px; }
   #cms-section .cms-workbench-hint { display: none; }
 }
+
+.blog-featured-image{display:block;width:100%;height:auto;margin:0 0 1.5rem;border-radius:8px}.blog-card .blog-featured-image{aspect-ratio:16/9;object-fit:cover}

@@ -42,7 +42,7 @@ export async function onRequestGet(context) {
   }
   const back = lang === 'ne' ? '← सबै कथाहरू' : '← All stories';
   const notice = post.fallback ? '<p class="blog-language-notice" role="status">यस कथाको नेपाली अनुवाद अझै उपलब्ध छैन। यो कथा अंग्रेजीमा देखाइएको छ।</p>' : '';
-  const article = `<article class="blog-article" id="post" data-rendered-language="${lang}" data-content-language="${language}"><a class="blog-back" href="blog.html">${back}</a><span class="eyebrow">${escape(lang === 'ne' && String(post.category ?? '').toLowerCase() === 'farm stories' ? 'फार्मका कथाहरू' : post.category ?? '')}</span><h1>${escape(post.title ?? '')}</h1>${notice}<div class="blog-article-content">${body}</div></article>`;
+  const article = `<article class="blog-article" id="post" data-rendered-language="${lang}" data-content-language="${language}"><a class="blog-back" href="blog.html">${back}</a><span class="eyebrow">${escape(lang === 'ne' && String(post.category ?? '').toLowerCase() === 'farm stories' ? 'फार्मका कथाहरू' : post.category ?? '')}</span><h1>${escape(post.title ?? '')}</h1>${notice}${post.social_image && image===post.social_image ? `<img class="blog-featured-image" src="${escape(image)}" alt="${escape(post.featured_alt || '')}">` : ''}<div class="blog-article-content">${body}</div></article>`;
   const localized = lang === 'ne' ? html.replace(/(<[^>]+data-en="[^"]*"[^>]*data-ne="([^"]*)"[^>]*>)[^<]*(?=<)/g, (_, tag, translation) => tag + translation).replace('type="button">नेपाली</button>', 'type="button">English</button>') : html;
   return new Response(localized.replace(/<html lang="en">/i,`<html lang="${language}">`).replace(/<head>[\s\S]*?<\/head>/i,()=>`<head>\n${tags}\n</head>`).replace(articlePattern,()=>article),{headers});
 }

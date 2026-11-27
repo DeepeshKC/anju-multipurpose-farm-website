@@ -1,3 +1,4 @@
+import { validateFeatured } from '../../../_featured-image.js';
 function safeArticleLink(raw) {
   if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
   if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
@@ -386,6 +387,7 @@ export async function onRequestPost(ctx) {
   let html;
 
   try {
+    await validateFeatured(ctx.env.DB, content_json);
     html = renderDocument(content_json);
   } catch (e) {
     return reply({ error: e.message }, 400);

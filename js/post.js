@@ -256,6 +256,9 @@ function renderPost() {
     }
   }
 
+  if (/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(p.social_image || '')) {
+    const cover=document.createElement('img');cover.className='blog-featured-image';cover.src=p.social_image;cover.alt=p.featured_alt||'';article.append(cover);
+  }
   article.append(content);
 }
 
