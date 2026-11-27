@@ -1,3 +1,4 @@
+import {mediaFolder,ownsMedia} from '../../../../_media-environment.js';
 import {reply,guard,sameOrigin} from '../../../../_shared.js';
 const days=30;
 export async function onRequestDelete(ctx){
@@ -17,7 +18,9 @@ export async function onRequestDelete(ctx){
   for(const [table,column] of [['posts','content'],['post_translations','content_json'],['post_translations','content_html'],['translation_revisions','content_json'],['translation_revisions','content_html'],['english_publication_revisions','content_json'],['english_publication_revisions','content_html']]){
    if(await db.prepare(`SELECT 1 FROM ${table} WHERE instr(COALESCE(${column},''),?)>0 OR instr(COALESCE(${column},''),?)>0 LIMIT 1`).bind(item.secure_url,`"mediaId":${id},`).first())return reply({error:'Photograph is referenced in article content or history.'},409);
   }
-  if(!/^anju-farm\/staging\/[a-f0-9-]{36}$/.test(item.public_id))return reply({error:'Only staging uploads can be deleted'},403);
+  const folder=mediaFolder(ctx.request,ctx.env);
+  if(!folder)return reply({error:'Media environment mismatch'},503);
+  if(!ownsMedia(folder,item.public_id))return reply({error:'Media belongs to another environment'},403);
   const cloud=ctx.env.CLOUDINARY_CLOUD_NAME,key=ctx.env.CLOUDINARY_API_KEY,secret=ctx.env.CLOUDINARY_API_SECRET;
   if(!cloud||!key||!secret)return reply({error:'Cloudinary credentials missing'},503);
   const timestamp=Math.floor(Date.now()/1000);
