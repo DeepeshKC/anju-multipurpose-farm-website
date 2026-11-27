@@ -1,3 +1,10 @@
+function formatNepaliDate(d) {
+  const parts = new Intl.DateTimeFormat('en-US', {year:'numeric',month:'numeric',day:'numeric',timeZone:'Asia/Kathmandu'}).formatToParts(d);
+  const part = type => parts.find(p => p.type === type).value;
+  const months = ['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'];
+  const digits = v => String(v).replace(/[0-9]/g, n => '०१२३४५६७८९'[Number(n)]);
+  return `${digits(part('day'))} ${months[Number(part('month'))-1]} ${digits(part('year'))}`;
+}
 function safeArticleLink(raw) {
   if (typeof raw !== 'string' || raw.length > 2048 || /[\\\u0000-\u001f\u007f]/.test(raw)) return null;
   if (raw.startsWith('/') && !raw.startsWith('//')) return raw;
