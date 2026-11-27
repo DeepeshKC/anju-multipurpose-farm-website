@@ -1,3 +1,4 @@
+import { validateFeatured } from '../../../../_featured-image.js';
 
 import {
   reply, guard, sameOrigin, safeJson
@@ -104,6 +105,7 @@ export async function onRequestPut(ctx) {
 
   let html;
   try {
+    await validateFeatured(ctx.env.DB, content_json);
     html = renderDocument(content_json);
   } catch (error) {
     return reply({ error: error.message }, 400);
