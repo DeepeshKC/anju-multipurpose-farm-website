@@ -17,6 +17,7 @@ export async function onRequestGet({ env, params, request }) {
     const cms = await env.DB.prepare(`
       SELECT
         p.slug,
+        er.id AS en_revision, nr.id AS ne_revision,
         p.category,
         er.title AS english_title,
         er.excerpt AS english_excerpt,
@@ -60,6 +61,12 @@ export async function onRequestGet({ env, params, request }) {
 
       const doc = JSON.parse((useNepali ? cms.nepali_json : cms.english_json) || "{}");
       const cover = doc.featuredImage;
+      const {results: imageDimensions} = await env.DB.prepare(`
+        SELECT DISTINCT m.secure_url, m.width, m.height
+        FROM cloudinary_publication_media pm JOIN cloudinary_media m ON m.id = pm.media_id
+        WHERE (pm.language = 'en' AND pm.publication_revision_id = ?)
+           OR (pm.language = 'ne' AND pm.publication_revision_id = ?)
+      `).bind(cms.en_revision, cms.ne_revision).all();
       return reply({
         post: {
           slug: cms.slug,
@@ -71,6 +78,7 @@ export async function onRequestGet({ env, params, request }) {
           language: useNepali ? 'ne' : 'en',
           requested_language: language,
           social_image: cover?.src || (useNepali ? cms.nepali_image : cms.english_image),
+          image_dimensions: imageDimensions,
           featured_alt: (useNepali ? cover?.alt_ne : cover?.alt_en) || "",
           fallback: language === 'ne' && !useNepali,
           has_nepali_publication: cms.nepali_title !== null && cms.nepali_content !== null,
