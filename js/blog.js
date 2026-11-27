@@ -12,6 +12,14 @@ const esc = s => String(s ?? '').replace(
   }[c])
 );
 
+function blogImage(p, priority) {
+  const src = p.featured_image || '';
+  if (!/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(src)) return '';
+  const variant = w => src.replace('/image/upload/', `/image/upload/f_auto,q_auto,c_limit,w_${w}/`);
+  const srcset = [320, 480, 640, 800, 960, 1280, 1600].map(w => `${variant(w)} ${w}w`).join(', ');
+  return `<img class="blog-featured-image" loading="${priority ? 'eager' : 'lazy'}"${priority ? ' fetchpriority="high"' : ''} decoding="async" src="${esc(variant(640))}" srcset="${esc(srcset)}" sizes="(max-width: 800px) 88vw, (max-width: 1340px) 29vw, 350px" alt="${esc(p.featured_alt)}">`;
+}
+
 let selected = document.documentElement.lang === 'ne' ? 'ne' : 'en';
 const lang = () => selected;
 
@@ -45,7 +53,7 @@ function renderBlog() {
     return;
   }
 
-  list.innerHTML = blogPosts.map(p => {
+  list.innerHTML = blogPosts.map((p,i) => {
     const fallbackNotice =
       ne && p.fallback
         ? '<span class="blog-language-notice">नेपाली अनुवाद उपलब्ध छैन। अंग्रेजीमा पढ्नुहोस्।</span>'
@@ -55,7 +63,7 @@ function renderBlog() {
 
     return `
       <article class="blog-card">
-        ${/^https:\/\/res\.cloudinary\.com\/[a-zA-Z0-9_-]+\/image\/upload\/[a-zA-Z0-9_./-]+$/.test(p.featured_image||'') ? `<img class="blog-featured-image" loading="lazy" src="${esc(p.featured_image)}" alt="${esc(p.featured_alt)}">` : ''}
+        ${blogImage(p,i===0)}
         <span class="eyebrow">${esc(p.category)}</span>
         <h2>${esc(p.title)}</h2>
         <p>${esc(p.excerpt)}</p>
