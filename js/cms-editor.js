@@ -680,6 +680,11 @@ updateWordCount();
     const seoTitleField = document.getElementById('cms-seo-title');
     const seoDescriptionField = document.getElementById('cms-seo-description');
 
+    const authorLabel = document.createElement('label');
+    authorLabel.textContent = 'Author (optional; defaults to Anju Farm)';
+    const authorField = document.createElement('input');
+    authorField.type = 'text'; authorField.maxLength = 150;
+    authorLabel.append(authorField); titleField.parentElement.after(authorLabel);
     let featured = null;
     const featuredBox = document.createElement('fieldset');
     featuredBox.className = 'cms-cover-settings';
@@ -707,7 +712,7 @@ updateWordCount();
       }if(!gallery.children.length)gallery.textContent='No photographs available.';}catch(e){gallery.textContent=e.message;}
     };
     setFeatured(null);
-    function documentWithCover(){return {...editor.getJSON(),featuredImage:featured};}
+    function documentWithCover(){return {...editor.getJSON(),featuredImage:featured,author:authorField.value.trim()};}
     let editingId = null;
     let editingLanguage = 'en';
     let saving = false;
@@ -822,7 +827,7 @@ h1{font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;margin:12px 0 20px}.excerpt{
 .article p{margin:1em 0}.article li{margin:.3em 0}
 .farm-inline-image{box-sizing:border-box;max-width:100%;width:var(--farm-width,100%);margin:1.5rem auto;text-align:center;clear:both}.farm-inline-image img{display:block;width:100%;height:auto}.farm-inline-image figcaption{font-size:.9rem;color:#586052}.farm-image-window{overflow:hidden}.farm-wrap-left{float:left;clear:left;max-width:48%;margin:0 1.4rem 1rem 0}.farm-wrap-right{float:right;clear:right;max-width:48%;margin:0 0 1rem 1.4rem}.farm-wrap-none{float:none}.farm-align-left{margin-left:0;margin-right:auto}.farm-align-right{margin-left:auto;margin-right:0}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window{aspect-ratio:4/3}.farm-inline-image:not([style*="--farm-crop:100%"]) .farm-image-window img{height:100%;object-fit:cover;object-position:var(--farm-crop-x,50%) var(--farm-crop-y,50%)}
 html[lang="ne"] main{font-family:"Noto Sans Devanagari", "Nirmala UI", Mangal, sans-serif;font-size:19px;line-height:1.9}html[lang="ne"] .excerpt{font-size:19px}html[lang="ne"] h1{line-height:1.4}html[lang="ne"] .article h2{font-size:28px;line-height:1.4}html[lang="ne"] .farm-inline-image figcaption{font-size:16px;line-height:1.7}</style>${language === 'ne' ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&amp;display=swap">' : ''}</head><body><header>DRAFT PREVIEW — NOT PUBLISHED · ${language === 'ne' ? 'NEPALI' : 'ENGLISH'}</header>
-<main><div class="category">${category}</div><h1>${title}</h1><p class="excerpt">${excerpt}</p>
+<main><div class="category">${category}</div><h1>${title}</h1><p>${escapePreviewText(doc.author || (language === "ne" ? "अञ्जु बहुउद्देश्यीय कृषि फार्म" : "Anju Multipurpose Agriculture Farm"))}</p><p class="excerpt">${excerpt}</p>
 ${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featured.src)}" alt="${escapePreviewText((language==='ne'?featured.alt_ne:featured.alt_en)||'')}">` : ''}<div class="article">${content}</div></main></body></html>`;
       const blobUrl = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
       const tab = window.open(blobUrl, '_blank');
@@ -929,6 +934,7 @@ ${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featu
 
     function clearForm() {
       form.reset();
+      authorField.value = "";
       setFeatured(null);
       editor.commands.clearContent();
 
@@ -1003,6 +1009,7 @@ ${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featu
         setLanguage('en');
         editor.commands.setContent(article.content_json);
         setFeatured(article.content_json.featuredImage);
+        authorField.value = article.content_json.author || "";
 
         form.hidden = false;
         recordEditorSnapshot();
@@ -1073,6 +1080,7 @@ ${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featu
         seoDescriptionField.value = nepali?.seo_description || '';
 
         setLanguage('ne');
+        authorField.value = nepali?.content_json?.author || (!nepali ? english.content_json?.author : '') || '';
         setFeatured(nepali?.content_json ? nepali.content_json.featuredImage : english.content_json?.featuredImage);
 
         if (nepali?.content_json) {
@@ -1875,7 +1883,9 @@ ${featured ? `<img style="width:100%;height:auto" src="${escapePreviewText(featu
           const badges = document.createElement('div'); badges.className = 'cms-card-badges';
           for (const [name, live] of [['English', englishPublished], ['Nepali', nepaliPublished]]) {
             const badge = document.createElement('span'); badge.className = 'cms-card-badge' + (live ? ' is-live' : '');
-            badge.textContent = name + ': ' + (live ? 'Published' : 'Not published'); badges.appendChild(badge);
+            const pending = name === 'English' ? article.english_source_version !== article.english_live_source_version : article.nepali_approved_revision_id !== article.nepali_published_revision_id || ['draft','in_review','changes_requested'].includes(article.nepali_status);
+            const approved = name === 'English' ? article.english_review_status === 'approved' : article.nepali_status === 'approved';
+            badge.textContent = name + ': ' + (live ? 'Published' : 'Not published') + (live && pending ? (approved ? ' · Approved revision awaiting publication' : ' · Revision pending') : ''); badges.appendChild(badge);
           }
           if (article.nepali_status === 'in_review') {
             const badge = document.createElement('span'); badge.className = 'cms-card-badge is-review'; badge.textContent = 'Nepali review pending'; badges.appendChild(badge);
