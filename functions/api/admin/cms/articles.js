@@ -41,6 +41,7 @@ export async function onRequestGet(ctx) {
         COALESCE((SELECT decision FROM english_editorial_reviews r WHERE r.translation_id=en.id AND r.source_version=en.source_version ORDER BY r.id DESC LIMIT 1),'draft') AS english_review_status,
         en.published_english_revision_id AS english_published_revision_id,
         en.language_published_at AS english_published_at,
+        (SELECT source_version FROM english_publication_revisions WHERE id=en.published_english_revision_id) AS english_live_source_version,
 
 
         ne.id AS nepali_translation_id,
