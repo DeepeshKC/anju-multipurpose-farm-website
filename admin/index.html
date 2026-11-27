@@ -173,10 +173,13 @@
 .cms-recovery-note{font-size:.84rem;color:#5f705f;border-top:1px solid #e6ebe5;margin:18px 0 0;padding-top:16px;line-height:1.6}
 @media(max-width:640px){.cms-recovery-header{padding:20px 17px 14px}.cms-recovery-tabs{padding:0 17px 15px}.cms-recovery-content{padding:20px 17px!important}.cms-recovery-section-head{flex-direction:column}.cms-recovery-section-head button{align-self:flex-start}}
 </style>
-=======
  
 <style id="cms-admin-finish">
 /* Keep the legacy editor's handlers available without displaying a second editor. */
+.cms-list-tools{align-items:center}
+#cms-new{border:1px solid #173e30;border-radius:7px;background:#173e30;color:#fff;padding:11px 18px;font:inherit;font-weight:650;cursor:pointer}
+#cms-new:disabled{opacity:.5;cursor:not-allowed}
+#cms-new:focus-visible{outline:3px solid #bd9c55;outline-offset:2px}
 .cms-logout-button{margin-left:auto;border:1px solid #bacdc0;background:#fff;color:#254535;border-radius:7px;padding:10px 16px;cursor:pointer}
 #editor-section,#editor-section:not([hidden]){display:none!important}
 .admin-wrap{max-width:1480px!important;width:100%;padding:34px clamp(18px,4vw,64px)!important}
@@ -187,7 +190,7 @@
 .cms-list-heading{display:flex;align-items:end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:28px 0 14px}
 .cms-list-heading h3{font-size:1.35rem;margin:0 0 4px}
 .cms-list-heading p{margin:0}
-.cms-list-tools{display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+.cms-list-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .cms-list-tools label{font-size:.8rem;margin:0 0 5px!important}
 .cms-list-tools input{min-width:min(300px,78vw)}
 .cms-list-tools select{min-width:170px}
